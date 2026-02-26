@@ -5,7 +5,7 @@ import { getCachedSearchPage, setCachedSearchPage } from '@/lib/search-cache';
 import { SearchResult } from '@/lib/types';
 import { cleanHtmlTags } from '@/lib/utils';
 // 使用轻量级 switch-chinese 库（93.8KB vs opencc-js 5.6MB）
-import stcasc, { ChineseType } from 'switch-chinese';
+import stcasc from 'switch-chinese';
 
 // 创建模块级别的繁简转换器实例
 const converter = stcasc();
@@ -432,13 +432,11 @@ export function generateSearchVariants(originalQuery: string): string[] {
     }
   }
 
-  // 4. 繁体检测：如果是繁体输入，添加简体变体
-  const detectedType = converter.detect(trimmed);
-  if (detectedType !== ChineseType.SIMPLIFIED) {
-    const simplified = converter.simplized(trimmed);
-    if (simplified !== trimmed) {
-      return [trimmed, simplified];
-    }
+  // 4. 繁体检测：无条件尝试转换，结果不同则添加简体变体
+  // 不依赖 detect()，因为部分繁体字会被误判为简体
+  const simplified = converter.simplized(trimmed);
+  if (simplified !== trimmed) {
+    return [trimmed, simplified];
   }
 
   // 5. 普通查询：不需要变体，只返回原始查询
