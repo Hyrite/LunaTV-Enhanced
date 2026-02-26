@@ -158,7 +158,7 @@ export async function searchFromApi(
     // 🚀 并行搜索所有变体（关键优化：不再串行等待）
     const variantPromises = searchVariants.map(async (variant, index) => {
       const apiUrl = apiBaseUrl + API_CONFIG.search.path + encodeURIComponent(variant);
-      console.log(`[DEBUG] 并行搜索变体 ${index + 1}/${searchVariants.length}: "${variant}"`);
+      console.log(`[DEBUG] 并行搜索变体 ${index + 1}/${searchVariants.length}: "${variant}" URL: ${apiUrl}`);
 
       try {
         const result = await searchWithCache(apiSite, variant, 1, apiUrl, 8000);
