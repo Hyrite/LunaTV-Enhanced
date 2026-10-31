@@ -1,4 +1,4 @@
-const CURRENT_VERSION = '10.1.1';
+const CURRENT_VERSION = '10.1.2';
 
 // 本仓库地址：版本检查、变更日志与「前往仓库」链接都指向这里，而非上游
 const REPO_URL = 'https://github.com/Hyrite/LunaTV-Enhanced';
