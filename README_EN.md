@@ -109,11 +109,13 @@ This project is for educational purposes only. Do not use for commercial purpose
 For Ubuntu / Debian VPS (amd64, arm64): the script installs Docker, runs LunaTV + Kvrocks with Docker Compose, and serves HTTPS through the host's nginx (port 2096 by default, which works behind the Cloudflare proxy). It uses a certificate already on the server, by default `/root/cert/<domain>/fullchain.pem` and `privkey.pem` (for example one issued by 3x-ui / acme.sh), and does not touch your existing nginx config, certificates or acme.sh settings.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv.sh -o lunatv.sh
-sudo bash lunatv.sh
+curl -fsSL https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv-ex.sh -o lunatv-ex.sh
+sudo bash lunatv-ex.sh
 ```
 
-The installer asks for the domain, port, certificate paths and admin username / password, and re-asks with the reason when an answer is invalid. It checks that the certificate is valid and covers the domain, that the port is free, opens the port in the host firewall (ufw, or the iptables rules shipped with Oracle Cloud images) when needed, and finishes with an HTTPS self-test. Afterwards, run `lunatv` to open the management menu (install, status, info, update, logs, start/stop, uninstall), or run commands directly such as `lunatv status` and `lunatv update`; `lunatv help` lists them all. Extra environment variables such as TMDB can go in `/opt/lunatv/.env` and are kept on reinstall.
+The installer asks for the domain, port, certificate paths and admin username / password, and re-asks with the reason when an answer is invalid. It checks that the certificate is valid and covers the domain, that the port is free, opens the port in the host firewall (ufw, or the iptables rules shipped with Oracle Cloud images) when needed, and finishes with an HTTPS self-test. Afterwards, run `lunatv-ex` to open the management menu (install, status, info, update, logs, start/stop, uninstall), or run commands directly such as `lunatv-ex status` and `lunatv-ex update`; `lunatv-ex help` lists them all. Extra environment variables such as TMDB can go in `/opt/lunatv-ex/.env` and are kept on reinstall.
+
+It can run on the same server as the `lunatv` deployment from [iv7777/LunaTV](https://github.com/iv7777/LunaTV): the command, install directory, containers, data volume, nginx config, scheduled task and firewall rules are all named `lunatv-ex`, and the local port defaults to 3001 (`lunatv` uses 3000). Both can share one HTTPS port (for example 2096) — nginx tells them apart by domain — as long as LunaTV Enhanced uses a different domain (for example `tvx.example.com`) with a certificate that covers it; the script checks that no other site on that port uses the same domain.
 
 Remember to open the public port (TCP 2096 by default) in your cloud provider's firewall.
 

@@ -1,40 +1,50 @@
 #!/usr/bin/env bash
 #
-# LunaTV 一键部署与维护脚本（Ubuntu / Debian，amd64 / arm64）
+# LunaTV Enhanced 一键部署与维护脚本 lunatv-ex（Ubuntu / Debian，amd64 / arm64）
+#
+# 可以和 iv7777/LunaTV 的 lunatv 部署装在同一台服务器上：命令、安装目录、容器、数据卷、
+# nginx 配置、定时任务和防火墙规则都用 lunatv-ex 区分；使用不同的域名时可以共用同一个
+# HTTPS 端口（例如都用 2096，nginx 按域名区分）。
 #
 # 部署结构：
 #   - Docker Compose 运行 LunaTV + Kvrocks；LunaTV 只监听本机 127.0.0.1，不直接对外
 #   - 宿主机 nginx 负责 HTTPS（默认 2096 端口，可走 Cloudflare 代理），
 #     证书使用已有文件，例如 3x-ui / acme.sh 放在 /root/cert/<域名>/ 下的证书
-#   - /etc/cron.d/lunatv 每周 reload 一次 nginx，加载续期后的证书
-#   - 宿主机防火墙（ufw 或 iptables）拦截时放行 HTTPS 端口，规则带 lunatv 注释
+#   - /etc/cron.d/lunatv-ex 每周 reload 一次 nginx，加载续期后的证书
+#   - 宿主机防火墙（ufw 或 iptables）拦截时放行 HTTPS 端口，规则带 lunatv-ex 注释
 #   - 只新增或删除自己的文件和规则，不改动已有的 nginx 配置、证书和 acme.sh 设置
 #
 # 用法：
-#   curl -fsSL https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv.sh -o lunatv.sh
-#   sudo bash lunatv.sh install
-# 安装时会顺带安装 lunatv 命令，之后直接运行 lunatv status、lunatv update 等；
-# lunatv help 查看全部命令。
+#   curl -fsSL https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv-ex.sh -o lunatv-ex.sh
+#   sudo bash lunatv-ex.sh
+# 安装时会顺带安装 lunatv-ex 命令，之后直接运行 lunatv-ex 打开管理菜单，或 lunatv-ex status 等；
+# lunatv-ex help 查看全部命令。
 
 set -Eeuo pipefail
 
 SCRIPT_VERSION='1.0.0'
-# self-update 的下载地址，可用 LUNATV_SCRIPT_URL 改成其他分支
-SCRIPT_URL="${LUNATV_SCRIPT_URL:-https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv.sh}"
+# 安装后的命令名；目录、容器、配置文件等都以它命名，与 lunatv 部署互不干扰
+CMD_NAME='lunatv-ex'
+# self-update 的下载地址，可用 LUNATV_EX_SCRIPT_URL 改成其他分支
+SCRIPT_URL="${LUNATV_EX_SCRIPT_URL:-https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv-ex.sh}"
 DEFAULT_IMAGE='ghcr.io/hyrite/lunatv:latest'
 KVROCKS_IMAGE='apache/kvrocks'
-COMPOSE_PROJECT='lunatv'
+COMPOSE_PROJECT='lunatv-ex'
+APP_CONTAINER='lunatv-ex'
+KVROCKS_CONTAINER='lunatv-ex-kvrocks'
 DEFAULT_PROXY_PORT='2096'
-DEFAULT_APP_PORT='3000'
+# lunatv 部署默认用 3000，这里错开
+DEFAULT_APP_PORT='3001'
 # Cloudflare 代理支持的 HTTPS 端口
 CF_HTTPS_PORTS='443 2053 2083 2087 2096 8443'
 
 # 以下路径可用环境变量覆盖（主要用于测试）
-LUNATV_DIR="${LUNATV_DIR:-/opt/lunatv}"
-NGINX_CONF="${LUNATV_NGINX_CONF:-/etc/nginx/conf.d/lunatv.conf}"
-CRON_FILE="${LUNATV_CRON_FILE:-/etc/cron.d/lunatv}"
-BIN_PATH="${LUNATV_BIN:-/usr/local/bin/lunatv}"
-IPTABLES_DIR="${LUNATV_IPTABLES_DIR:-/etc/iptables}"
+LUNATV_DIR="${LUNATV_EX_DIR:-/opt/lunatv-ex}"
+NGINX_CONF="${LUNATV_EX_NGINX_CONF:-/etc/nginx/conf.d/lunatv-ex.conf}"
+CRON_FILE="${LUNATV_EX_CRON_FILE:-/etc/cron.d/lunatv-ex}"
+BIN_PATH="${LUNATV_EX_BIN:-/usr/local/bin/lunatv-ex}"
+IPTABLES_DIR="${LUNATV_EX_IPTABLES_DIR:-/etc/iptables}"
+NGINX_LOG_PREFIX='/var/log/nginx/lunatv-ex'
 ENV_FILE="$LUNATV_DIR/.env"
 COMPOSE_FILE="$LUNATV_DIR/docker-compose.yml"
 STATE_FILE="$LUNATV_DIR/deploy.conf"
@@ -260,11 +270,11 @@ install_file() {
 
 render_compose() {
   cat <<EOF
-# 由 LunaTV 部署脚本生成，重新运行 install 会覆盖此文件
+# 由 LunaTV Enhanced 部署脚本（lunatv-ex）生成，重新运行 install 会覆盖此文件
 services:
   lunatv:
     image: $IMAGE
-    container_name: lunatv
+    container_name: $APP_CONTAINER
     restart: unless-stopped
     # 只监听本机，由宿主机 nginx 提供 HTTPS
     ports:
@@ -278,7 +288,7 @@ services:
 
   lunatv-kvrocks:
     image: $KVROCKS_IMAGE
-    container_name: lunatv-kvrocks
+    container_name: $KVROCKS_CONTAINER
     restart: unless-stopped
     volumes:
       - kvrocks-data:/var/lib/kvrocks
@@ -300,7 +310,7 @@ render_nginx_conf() {
     listen_opts='ssl http2'
     http2_directive=0
   fi
-  echo '# 由 LunaTV 部署脚本生成，重新运行 install 会覆盖此文件；卸载时会被删除'
+  echo '# 由 LunaTV Enhanced 部署脚本（lunatv-ex）生成，重新运行 install 会覆盖此文件；卸载时会被删除'
   echo 'server {'
   echo "    listen $PROXY_PORT $listen_opts;"
   if has_ipv6; then
@@ -315,8 +325,8 @@ render_nginx_conf() {
     ssl_certificate     $CERT_FILE;
     ssl_certificate_key $KEY_FILE;
 
-    access_log /var/log/nginx/lunatv.access.log;
-    error_log  /var/log/nginx/lunatv.error.log;
+    access_log $NGINX_LOG_PREFIX.access.log;
+    error_log  $NGINX_LOG_PREFIX.error.log;
 
     # 数据导入需要上传备份文件，nginx 默认只允许 1MB
     client_max_body_size 100m;
@@ -339,16 +349,16 @@ EOF
 
 render_cron() {
   cat <<'EOF'
-# 由 LunaTV 部署脚本生成：每周一 04:00 reload nginx，加载续期后的证书
+# 由 LunaTV Enhanced 部署脚本（lunatv-ex）生成：每周一 04:10 reload nginx，加载续期后的证书
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-0 4 * * 1 root systemctl reload nginx >/dev/null 2>&1
+10 4 * * 1 root systemctl reload nginx >/dev/null 2>&1
 EOF
 }
 
 render_state() {
   cat <<EOF
-# 由 LunaTV 部署脚本生成，供 status / info / update 等命令读取
+# 由 LunaTV Enhanced 部署脚本（lunatv-ex）生成，供 status / info / update 等命令读取
 DOMAIN=$DOMAIN
 PROXY_PORT=$PROXY_PORT
 APP_PORT=$APP_PORT
@@ -362,12 +372,12 @@ EOF
 
 # USERNAME / PASSWORD 写在最前面，保留用户在 .env 里加的其他变量
 render_env() {
-  echo '# LunaTV 环境变量：USERNAME / PASSWORD 是站长的登录用户名和密码，其他可用变量见 docs/deployment/CONFIGURATION.md「环境变量」'
+  echo '# LunaTV Enhanced 环境变量：USERNAME / PASSWORD 是站长的登录用户名和密码，其他可用变量见 docs/deployment/CONFIGURATION.md「环境变量」'
   echo "USERNAME=$ADMIN_USER"
   # 单引号包裹，密码里的 # 不会被当成注释
   echo "PASSWORD='$ADMIN_PASS'"
   if [[ -f $ENV_FILE ]]; then
-    grep -vE '^(USERNAME|PASSWORD)=|^# LunaTV 环境变量' "$ENV_FILE" || true
+    grep -vE '^(USERNAME|PASSWORD)=|^# LunaTV( Enhanced)? 环境变量' "$ENV_FILE" || true
   fi
 }
 
@@ -505,21 +515,84 @@ listener_names() {
   sed -n 's/.*users:(("\([^"]*\)".*/\1/p' <<<"$1" | sort -u | paste -sd, -
 }
 
-# 端口检查：可以使用时不输出并返回 0，被占用时输出原因并返回 1
+# 读取 nginx 当前加载的完整配置（测试时可替换）
+nginx_dump() {
+  command -v nginx >/dev/null || return 0
+  nginx -T 2>/dev/null || true
+}
+
+# nginx_conflicts <端口> <域名>：找出其他 nginx 配置里会妨碍共用该端口的 server 块，每行一条：
+#   nossl <文件>  该端口上有不走 SSL 的站点，HTTPS 站点不能与它共用
+#   name  <文件>  该端口上已有同一个域名的站点
+# 本脚本自己的配置文件不算
+nginx_conflicts() {
+  nginx_dump | awk -v port="$1" -v domain="$2" -v self="$NGINX_CONF" '
+    function flush() {
+      if (in_server && file != self) {
+        if (port_nossl) print "nossl " file
+        if (port_used && has_name) print "name " file
+      }
+      in_server = 0; port_used = 0; port_nossl = 0; has_name = 0
+    }
+    /^# configuration file / { file = $4; sub(/:$/, "", file); next }
+    {
+      line = $0
+      sub(/#.*/, "", line)
+      if (!in_server && line ~ /(^|[[:space:];{}])server[[:space:]]*\{/) {
+        in_server = 1; server_depth = depth
+      }
+      if (in_server && match(line, /(^|[[:space:];{])listen[[:space:]]+[^;]+;/)) {
+        args = substr(line, RSTART, RLENGTH)
+        sub(/^.*listen[[:space:]]+/, "", args); sub(/;$/, "", args)
+        n = split(args, a, /[[:space:]]+/)
+        addr = a[1]; p = addr; sub(/^.*:/, "", p)
+        if (p == port) {
+          port_used = 1
+          ssl = 0
+          for (i = 2; i <= n; i++) if (a[i] == "ssl") ssl = 1
+          if (!ssl) port_nossl = 1
+        }
+      }
+      if (in_server && match(line, /(^|[[:space:];{])server_name[[:space:]]+[^;]+;/)) {
+        names = substr(line, RSTART, RLENGTH)
+        sub(/^.*server_name[[:space:]]+/, "", names); sub(/;$/, "", names)
+        n = split(names, a, /[[:space:]]+/)
+        for (i = 1; i <= n; i++) if (tolower(a[i]) == tolower(domain)) has_name = 1
+      }
+      depth += gsub(/\{/, "{", line) - gsub(/\}/, "}", line)
+      if (in_server && depth <= server_depth) flush()
+    }
+  ' | sort -u
+}
+
+# 对外端口检查：可以使用时不输出并返回 0，不能使用时输出原因并返回 1。
+# 端口只被 nginx 使用时可以按域名共用（例如与 lunatv 部署都用 2096），只要该端口上的站点都走 SSL、域名不重复
 proxy_port_error() {
-  local out
+  local out conflicts file
   out=$(port_listeners "$1")
-  if [[ -z $out ]] || [[ -f $NGINX_CONF && $out == *'"nginx"'* ]]; then
-    return 0
+  if [[ -n $out && $(listener_names "$out") != nginx ]]; then
+    echo "端口 $1 已被占用（$(listener_names "$out")）"
+    return 1
   fi
-  echo "端口 $1 已被占用（$(listener_names "$out")）"
-  return 1
+  conflicts=$(nginx_conflicts "$1" "$DOMAIN")
+  file=$(sed -n 's/^nossl //p' <<<"$conflicts")
+  file=${file%%$'\n'*}
+  if [[ -n $file ]]; then
+    echo "端口 $1 上已有不走 SSL 的 nginx 站点（$file），HTTPS 站点不能与它共用"
+    return 1
+  fi
+  file=$(sed -n 's/^name //p' <<<"$conflicts")
+  file=${file%%$'\n'*}
+  if [[ -n $file ]]; then
+    echo "域名 $DOMAIN 已在端口 $1 上由其他 nginx 站点使用（$file），请换一个域名或端口"
+    return 1
+  fi
 }
 
 app_port_error() {
   local out
   out=$(port_listeners "$1")
-  if [[ -z $out ]] || [[ $out == *'"docker-proxy"'* && $(container_project lunatv) == "$COMPOSE_PROJECT" ]]; then
+  if [[ -z $out ]] || [[ $out == *'"docker-proxy"'* && $(container_project "$APP_CONTAINER") == "$COMPOSE_PROJECT" ]]; then
     return 0
   fi
   echo "本机端口 $1 已被占用（$(listener_names "$out")）"
@@ -530,8 +603,10 @@ check_ports() {
   local err
   err=$(proxy_port_error "$PROXY_PORT") ||
     die "$err，请用 --port 换一个（走 Cloudflare 代理时可选：$CF_HTTPS_PORTS）"
-  if [[ -n $(port_listeners "$PROXY_PORT") ]]; then
-    ok "端口 $PROXY_PORT 正由之前的 LunaTV nginx 配置使用，将更新"
+  if [[ -n $(port_listeners "$PROXY_PORT") && -f $NGINX_CONF ]]; then
+    ok "端口 $PROXY_PORT 正由之前的 $CMD_NAME nginx 配置使用，将更新"
+  elif [[ -n $(port_listeners "$PROXY_PORT") ]]; then
+    ok "端口 $PROXY_PORT 已由 nginx 的其他站点使用，将按域名 $DOMAIN 共用"
   else
     ok "端口 $PROXY_PORT 可用"
   fi
@@ -550,7 +625,7 @@ check_ports() {
 
 check_container_names() {
   local name project
-  for name in lunatv lunatv-kvrocks; do
+  for name in "$APP_CONTAINER" "$KVROCKS_CONTAINER"; do
     container_exists "$name" || continue
     project=$(container_project "$name")
     if [[ $project != "$COMPOSE_PROJECT" ]]; then
@@ -667,7 +742,7 @@ start_stack() {
   log "拉取镜像…"
   dc pull || die "拉取镜像失败：请检查网络，并确认 GHCR 上的 lunatv 镜像已设为 Public"
   log "启动容器…"
-  dc up -d --remove-orphans || die "启动容器失败，运行 lunatv logs 查看原因"
+  dc up -d --remove-orphans || die "启动容器失败，运行 $CMD_NAME logs 查看原因"
   if ! wait_for_app; then
     dc logs --tail 60 lunatv >&2 || true
     die "LunaTV 在 120 秒内没有正常响应，上面是最近的日志"
@@ -687,7 +762,11 @@ install_nginx_conf() {
     restore_nginx_conf "$saved"
     die "nginx 配置检查失败，已恢复原样："$'\n'"$out"
   fi
-  dump=$(nginx -T 2>/dev/null) || true
+  if [[ $out == *"conflicting server name \"$DOMAIN\" on "*":$PROXY_PORT,"* ]]; then
+    restore_nginx_conf "$saved"
+    die "域名 $DOMAIN 已在端口 $PROXY_PORT 上由其他 nginx 站点使用，已恢复原样，请换一个域名或端口"
+  fi
+  dump=$(nginx_dump)
   if [[ $dump != *"# configuration file $NGINX_CONF:"* ]]; then
     restore_nginx_conf "$saved"
     die "nginx 没有加载 $NGINX_CONF：请确认 nginx.conf 的 http {} 里有 include $(dirname "$NGINX_CONF")/*.conf;"
@@ -729,7 +808,7 @@ report_https() {
   case $HTTPS_STATUS in
     ok) "$ok_fn" "HTTPS 正常：https://$DOMAIN:$PROXY_PORT" ;;
     untrusted) "$warn_fn" "HTTPS 可用，但证书不受公共 CA 信任（Cloudflare 源站证书属于这种情况，域名保持代理即可）" ;;
-    *) "$fail_fn" "通过 nginx 访问 https://$DOMAIN:$PROXY_PORT 失败：$HTTPS_STATUS，查看 /var/log/nginx/lunatv.error.log" ;;
+    *) "$fail_fn" "通过 nginx 访问 https://$DOMAIN:$PROXY_PORT 失败：$HTTPS_STATUS，查看 $NGINX_LOG_PREFIX.error.log" ;;
   esac
 }
 
@@ -737,7 +816,7 @@ report_https() {
 # nginx 直接在宿主机上监听，所以宿主机防火墙也要放行：ufw，或 Oracle Cloud 等镜像自带的 iptables 规则。
 # 本脚本添加的规则都带 lunatv 注释，卸载时按注释删除，不影响其他规则。
 
-FW_COMMENT='lunatv'
+FW_COMMENT='lunatv-ex'
 
 ufw_active() {
   local out
@@ -824,7 +903,7 @@ iptables_open_port() {
     ' "$file" | install_file "$file" "$(stat -c %a "$file")"
     ok "已写入 $file，重启后依然有效"
   else
-    warn "没有 $file，这条 $cmd 规则重启后会失效；重启后再运行一次 lunatv install 即可"
+    warn "没有 $file，这条 $cmd 规则重启后会失效；重启后再运行一次 $CMD_NAME install 即可"
   fi
 }
 
@@ -834,6 +913,10 @@ open_firewall() {
     ufw_remove_ours
     if ufw_allows_port; then
       ok "ufw 已放行 TCP $PROXY_PORT"
+      # ufw 不能为同一端口再加一条规则；规则属于 lunatv 部署时，卸载 lunatv 会把它删掉
+      if grep -qE "^$PROXY_PORT(/tcp)?[[:space:]]+ALLOW.*# lunatv[[:space:]]*\$" <<<"$(ufw status 2>/dev/null || true)"; then
+        warn "ufw 里放行 TCP $PROXY_PORT 的规则是 lunatv 部署添加的；以后卸载 lunatv 时它会被删除，届时运行 $CMD_NAME install 重新放行"
+      fi
     else
       ufw allow "$PROXY_PORT/tcp" comment "$FW_COMMENT" >/dev/null || die "ufw 放行 TCP $PROXY_PORT 失败"
       ok "已在 ufw 放行 TCP $PROXY_PORT"
@@ -844,11 +927,11 @@ open_firewall() {
     iptables_remove_ours "$cmd"
     if [[ $cmd == ip6tables ]] && ! has_ipv6; then continue; fi
     iptables_blocks "$cmd" || continue
+    # 即使已有其他规则（例如 lunatv 部署的）放行该端口，也加一条自己的：卸载其他部署删掉它们的规则时，这里不受影响
     if iptables_allows_port "$cmd"; then
-      ok "$cmd 已放行 TCP $PROXY_PORT"
-    else
-      iptables_open_port "$cmd"
+      log "$cmd 已有放行 TCP $PROXY_PORT 的规则，再加一条 $CMD_NAME 自己的，卸载其他部署时不受影响"
     fi
+    iptables_open_port "$cmd"
     changed=1
   done
   if ((changed == 0)); then
@@ -868,7 +951,7 @@ firewall_check() {
     if ufw_allows_port; then
       check_ok "ufw 已放行 TCP $PROXY_PORT"
     else
-      check_fail "ufw 没有放行 TCP $PROXY_PORT，重新运行 lunatv install 可修复"
+      check_fail "ufw 没有放行 TCP $PROXY_PORT，重新运行 $CMD_NAME install 可修复"
     fi
     return 0
   fi
@@ -878,7 +961,7 @@ firewall_check() {
     if iptables_allows_port "$cmd"; then
       check_ok "$cmd 已放行 TCP $PROXY_PORT"
     else
-      check_fail "$cmd 会拦截 TCP $PROXY_PORT，重新运行 lunatv install 可修复"
+      check_fail "$cmd 会拦截 TCP $PROXY_PORT，重新运行 $CMD_NAME install 可修复"
     fi
   done
   check_warn "云服务商防火墙（如 Oracle Cloud 的 Security List）也需要放行 TCP $PROXY_PORT，脚本无法检查"
@@ -894,9 +977,6 @@ install_cron() {
 
   local tab
   tab=$(crontab -l 2>/dev/null || true)
-  if [[ $tab == *"docker restart lunatv-caddy"* ]]; then
-    warn "root 的 crontab 里还有 docker restart lunatv-caddy，现在不用 Caddy 了，请用 crontab -e 删掉这一行"
-  fi
   if [[ $tab == *"systemctl reload nginx"* ]]; then
     log "root 的 crontab 里也有 reload nginx 的任务，和 $CRON_FILE 重复（无害），可以用 crontab -e 删掉"
   fi
@@ -915,13 +995,13 @@ install_executable() {
 install_self() {
   local src=${BASH_SOURCE[0]}
   if [[ ! -f $src ]]; then
-    warn "脚本不是从文件运行的，没有安装 lunatv 命令。可以运行：curl -fsSL $SCRIPT_URL -o $BIN_PATH && chmod +x $BIN_PATH"
+    warn "脚本不是从文件运行的，没有安装 $CMD_NAME 命令。可以运行：curl -fsSL $SCRIPT_URL -o $BIN_PATH && chmod +x $BIN_PATH"
     return 0
   fi
   if [[ ! $src -ef $BIN_PATH ]]; then
-    install_executable "$src" "$BIN_PATH" || die "无法安装 lunatv 命令到 $BIN_PATH"
+    install_executable "$src" "$BIN_PATH" || die "无法安装 $CMD_NAME 命令到 $BIN_PATH"
   fi
-  ok "已安装 lunatv 命令（$BIN_PATH）；以后直接运行 lunatv 打开管理菜单"
+  ok "已安装 $CMD_NAME 命令（$BIN_PATH）；以后直接运行 $CMD_NAME 打开管理菜单"
 }
 
 # ---------- 命令 ----------
@@ -1114,8 +1194,8 @@ cmd_install() {
   printf '  访问地址   %shttps://%s:%s%s\n' "$C_BOLD" "$DOMAIN" "$PROXY_PORT" "$C_RESET"
   printf '  站长用户名 %s\n' "$ADMIN_USER"
   if ((PASSWORD_GENERATED)); then
-    printf '  站长密码   %s%s%s（自动生成，请保存好；之后可用 lunatv info --show-password 查看）\n' \
-      "$C_BOLD" "$ADMIN_PASS" "$C_RESET"
+    printf '  站长密码   %s%s%s（自动生成，请保存好；之后可用 %s info --show-password 查看）\n' \
+      "$C_BOLD" "$ADMIN_PASS" "$C_RESET" "$CMD_NAME"
   fi
   cat <<EOF
 
@@ -1124,7 +1204,7 @@ cmd_install() {
   2. 域名走 Cloudflare 代理时，SSL/TLS 模式用 Full (strict)
   3. 从旧服务器迁移：管理面板 → 数据迁移 → 导入备份
 
-日常维护：lunatv status | info | update | logs | restart | uninstall（lunatv help 查看说明）
+日常维护：直接运行 $CMD_NAME 打开管理菜单，或 $CMD_NAME status | info | update | logs | restart | uninstall（$CMD_NAME help 查看说明）
 EOF
 }
 
@@ -1153,7 +1233,7 @@ cmd_status() {
   if version=$(app_version); then
     check_ok "运行正常，版本 v$version（本机 127.0.0.1:$APP_PORT）"
   else
-    check_fail "本机 127.0.0.1:$APP_PORT 没有响应，运行 lunatv logs 查看原因"
+    check_fail "本机 127.0.0.1:$APP_PORT 没有响应，运行 $CMD_NAME logs 查看原因"
   fi
 
   section 'nginx'
@@ -1219,7 +1299,7 @@ cmd_info() {
   printf '  环境变量     %s\n' "$ENV_FILE"
   printf '  数据卷       %s_kvrocks-data（%s）\n' "$COMPOSE_PROJECT" "$volume"
   printf '  nginx 配置   %s\n' "$NGINX_CONF"
-  printf '  nginx 日志   /var/log/nginx/lunatv.access.log、lunatv.error.log\n'
+  printf '  nginx 日志   %s.access.log、%s.error.log\n' "$NGINX_LOG_PREFIX" "$NGINX_LOG_PREFIX"
   if [[ -f $CERT_FILE ]]; then
     printf '  证书         %s（%s 天后到期）\n' "$CERT_FILE" "$(cert_days_left "$CERT_FILE")"
   else
@@ -1253,23 +1333,23 @@ cmd_start() {
   require_root
   require_installed
   use_state
-  dc up -d || die '启动失败，运行 lunatv logs 查看原因'
-  wait_for_app || die 'LunaTV 没有正常响应，运行 lunatv logs 查看原因'
+  dc up -d || die "启动失败，运行 $CMD_NAME logs 查看原因"
+  wait_for_app || die "LunaTV 没有正常响应，运行 $CMD_NAME logs 查看原因"
 }
 
 cmd_stop() {
   require_root
   require_installed
   dc stop || die '停止失败'
-  ok '已停止（数据保留，lunatv start 可重新启动）'
+  ok "已停止（数据保留，$CMD_NAME start 可重新启动）"
 }
 
 cmd_restart() {
   require_root
   require_installed
   use_state
-  dc restart || die '重启失败，运行 lunatv logs 查看原因'
-  wait_for_app || die 'LunaTV 没有正常响应，运行 lunatv logs 查看原因'
+  dc restart || die "重启失败，运行 $CMD_NAME logs 查看原因"
+  wait_for_app || die "LunaTV 没有正常响应，运行 $CMD_NAME logs 查看原因"
 }
 
 cmd_uninstall() {
@@ -1277,7 +1357,7 @@ cmd_uninstall() {
   section '卸载 LunaTV'
   echo "  将删除：LunaTV 与 Kvrocks 容器、$NGINX_CONF、$CRON_FILE、本脚本添加的防火墙规则"
   if ((PURGE)); then
-    echo "  并永久删除：数据卷（全部用户、播放记录、收藏）、$LUNATV_DIR、镜像和 lunatv 命令"
+    echo "  并永久删除：数据卷（全部用户、播放记录、收藏）、$LUNATV_DIR、LunaTV 镜像和 $CMD_NAME 命令"
   else
     echo "  将保留：数据卷与 $LUNATV_DIR（以后重新 install 即可恢复）；要彻底删除请加 --purge"
   fi
@@ -1292,7 +1372,9 @@ cmd_uninstall() {
 
   if [[ -f $COMPOSE_FILE ]] && command -v docker >/dev/null; then
     if ((PURGE)); then
-      dc down -v --remove-orphans --rmi all || warn '删除容器、数据卷或镜像时出错'
+      # 不用 --rmi all：apache/kvrocks 镜像可能还被 lunatv 部署使用，只删本部署的 LunaTV 镜像
+      dc down -v --remove-orphans || warn '删除容器或数据卷时出错'
+      docker image rm "$IMAGE" >/dev/null 2>&1 || true
     else
       dc down --remove-orphans || warn '删除容器时出错'
     fi
@@ -1346,7 +1428,7 @@ cmd_self_update() {
   fi
   install_executable "$tmp" "$BIN_PATH" || die "无法写入 $BIN_PATH"
   rm -f "$tmp"
-  ok "lunatv 命令已更新到 $(bash "$BIN_PATH" version)"
+  ok "$CMD_NAME 命令已更新到 $(bash "$BIN_PATH" version)"
 }
 
 # ---------- 交互菜单 ----------
@@ -1374,7 +1456,7 @@ menu_status() {
     return 0
   fi
   APP_PORT=${ST_APP_PORT:-$DEFAULT_APP_PORT}
-  running=$(docker inspect -f '{{.State.Running}}' lunatv 2>/dev/null || true)
+  running=$(docker inspect -f '{{.State.Running}}' "$APP_CONTAINER" 2>/dev/null || true)
   if [[ -z $running ]]; then
     echo "已卸载，数据保留（选 1 重新安装）"
   elif [[ $running != true ]]; then
@@ -1389,7 +1471,7 @@ menu_status() {
 menu_show() {
   cat <<EOF
 
-${C_BOLD}======== LunaTV 管理菜单 v$SCRIPT_VERSION ========${C_RESET}
+${C_BOLD}===== LunaTV Enhanced 管理菜单 v$SCRIPT_VERSION =====${C_RESET}
  状态：$(menu_status)
 ----------------------------------------
   1. 安装 / 重新配置
@@ -1401,7 +1483,7 @@ ${C_BOLD}======== LunaTV 管理菜单 v$SCRIPT_VERSION ========${C_RESET}
   7. 启动
   8. 停止
   9. 重启
- 10. 更新 lunatv 命令
+ 10. 更新 $CMD_NAME 命令
  11. 卸载（保留数据）
  12. 彻底卸载（删除全部数据）
   0. 退出（直接回车也可以）
@@ -1431,7 +1513,7 @@ menu_trap_stay() { trap 'restore_tty; printf "\n" >/dev/tty' INT; }
 
 cmd_menu() {
   require_root
-  is_interactive || die '菜单需要在终端里运行；也可以直接用 lunatv <命令>，见 lunatv help'
+  is_interactive || die "菜单需要在终端里运行；也可以直接用 $CMD_NAME <命令>，见 $CMD_NAME help"
   local choice
   while true; do
     menu_trap_exit
@@ -1457,7 +1539,7 @@ cmd_menu() {
         menu_run cmd_self_update
         # 新版本已写入磁盘，正在运行的还是旧代码，退出让用户重新打开
         if ((MENU_RC == 0)); then
-          ok '请重新运行 lunatv 使用新版本'
+          ok "请重新运行 $CMD_NAME 使用新版本"
           return 0
         fi
         ;;
@@ -1473,11 +1555,11 @@ cmd_menu() {
 
 usage() {
   cat <<EOF
-LunaTV 部署与维护脚本 v$SCRIPT_VERSION
+LunaTV Enhanced 部署与维护脚本 v$SCRIPT_VERSION（$CMD_NAME）
 
-用法：lunatv                  打开管理菜单
-      lunatv <命令> [选项]    直接执行某个命令
-      （首次安装：sudo bash lunatv.sh install，或 sudo bash lunatv.sh 打开菜单）
+用法：$CMD_NAME               打开管理菜单
+      $CMD_NAME <命令> [选项] 直接执行某个命令
+      （首次安装：sudo bash lunatv-ex.sh 打开菜单，或 sudo bash lunatv-ex.sh install）
 
 命令：
   menu          管理菜单（不带命令运行时默认打开）
@@ -1489,12 +1571,12 @@ LunaTV 部署与维护脚本 v$SCRIPT_VERSION
   start | stop | restart
                 启动 / 停止 / 重启容器
   uninstall     卸载（默认保留数据，--purge 彻底删除）
-  self-update   更新 lunatv 命令本身
+  self-update   更新 $CMD_NAME 命令本身
   version       显示脚本版本
 
 install 选项（不提供时会提问，加 -y 则使用默认值）：
   --domain <域名>      访问用的域名，证书必须包含它
-  --port <端口>        对外 HTTPS 端口，默认 $DEFAULT_PROXY_PORT
+  --port <端口>        对外 HTTPS 端口，默认 $DEFAULT_PROXY_PORT；只被 nginx 使用时按域名共用
   --cert <文件>        证书（fullchain），默认 /root/cert/<域名>/fullchain.pem
   --key <文件>         私钥，默认 /root/cert/<域名>/privkey.pem
   --username <用户名>  站长用户名，默认 admin
@@ -1508,10 +1590,10 @@ install 选项（不提供时会提问，加 -y 则使用默认值）：
   --show-password      info 时显示站长密码
 
 示例：
-  sudo bash lunatv.sh install --domain tv.example.com
-  lunatv status
-  lunatv update
-  lunatv uninstall --purge
+  sudo bash lunatv-ex.sh install --domain tvx.example.com
+  $CMD_NAME status
+  $CMD_NAME update
+  $CMD_NAME uninstall --purge
 EOF
 }
 
@@ -1551,7 +1633,7 @@ parse_options() {
         usage
         exit 0
         ;;
-      -*) die "未知选项：$1（运行 lunatv help 查看用法）" ;;
+      -*) die "未知选项：$1（运行 $CMD_NAME help 查看用法）" ;;
       *) POSITIONAL+=("$1") && shift ;;
     esac
   done
@@ -1582,7 +1664,7 @@ main() {
     self-update) cmd_self_update ;;
     version) echo "$SCRIPT_VERSION" ;;
     help | -h | --help) usage ;;
-    *) die "未知命令：$COMMAND（运行 lunatv help 查看用法）" ;;
+    *) die "未知命令：$COMMAND（运行 $CMD_NAME help 查看用法）" ;;
   esac
 }
 
