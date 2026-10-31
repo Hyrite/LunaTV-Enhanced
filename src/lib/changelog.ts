@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.3',
+    date: '2026-10-31',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      // 无变更内容
+    ],
+    fixed: [
+      '🔲 添加到主屏幕后手机顶部状态栏区域发灰发糊：顶部栏改为不透明（不再用毛玻璃），状态栏区域是头部自带的纯黑色块',
+      '🐢 源浏览器来源站很多（例如 50 个）时，按钮、分类和卡片依次淡入的动画要持续好几秒，期间手机上点其它按钮发涩：淡入延迟统一限制在最多 0.3 秒',
+    ],
+  },
+  {
     version: '10.1.2',
     date: '2026-10-31',
     added: [
