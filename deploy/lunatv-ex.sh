@@ -3,12 +3,12 @@
 # LunaTV Enhanced 一键部署与维护脚本 lunatv-ex（Ubuntu / Debian，amd64 / arm64）
 #
 # 可以和 iv7777/LunaTV 的 lunatv 部署装在同一台服务器上：命令、安装目录、容器、数据卷、
-# nginx 配置、定时任务和防火墙规则都用 lunatv-ex 区分；对外 HTTPS 端口默认 2083（lunatv 默认 2096）。
+# nginx 配置、定时任务和防火墙规则都用 lunatv-ex 区分；对外 HTTPS 端口默认 2087（lunatv 默认 2096）。
 # 确实需要时，也可以在使用不同域名的前提下共用同一个端口（nginx 按域名区分）。
 #
 # 部署结构：
 #   - Docker Compose 运行 LunaTV + Kvrocks；LunaTV 只监听本机 127.0.0.1，不直接对外
-#   - 宿主机 nginx 负责 HTTPS（默认 2083 端口，可走 Cloudflare 代理），
+#   - 宿主机 nginx 负责 HTTPS（默认 2087 端口，可走 Cloudflare 代理），
 #     证书使用已有文件，例如 3x-ui / acme.sh 放在 /root/cert/<域名>/ 下的证书
 #   - /etc/cron.d/lunatv-ex 每周 reload 一次 nginx，加载续期后的证书
 #   - 宿主机防火墙（ufw 或 iptables）拦截时放行 HTTPS 端口，规则带 lunatv-ex 注释
@@ -32,8 +32,8 @@ KVROCKS_IMAGE='apache/kvrocks'
 COMPOSE_PROJECT='lunatv-ex'
 APP_CONTAINER='lunatv-ex'
 KVROCKS_CONTAINER='lunatv-ex-kvrocks'
-# lunatv 部署默认用 2096，这里错开（2083 同样可以走 Cloudflare 代理）
-DEFAULT_PROXY_PORT='2083'
+# lunatv 部署默认用 2096，这里错开（2087 同样可以走 Cloudflare 代理）
+DEFAULT_PROXY_PORT='2087'
 # lunatv 部署默认用 3000，这里错开
 DEFAULT_APP_PORT='3001'
 # Cloudflare 代理支持的 HTTPS 端口
