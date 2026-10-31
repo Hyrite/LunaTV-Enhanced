@@ -23,6 +23,10 @@ type Item = {
   remarks?: string;
 };
 
+// 依次淡入的延迟，最多 0.3 秒：来源站有 50 个、列表有几百张卡片时，按序号线性累加会让动画持续好几秒
+// （50 个来源就是 2.8 秒），动画期间手机上点其它按钮会明显发涩
+const staggerDelay = (index: number) => Math.min(index, 10) * 0.03;
+
 // sessionStorage key for secondary UI state
 const SECONDARY_STATE_KEY = 'source-browser:secondary-state';
 
@@ -689,7 +693,7 @@ export default function SourceBrowserPage() {
                         : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-linear-to-r hover:from-emerald-50 hover:to-green-50 dark:hover:from-emerald-900/20 dark:hover:to-green-900/20 hover:border-emerald-300 dark:hover:border-emerald-700'
                     }`}
                     style={{
-                      animation: `fadeInUp 0.3s ease-out ${index * 0.05}s both`,
+                      animation: `fadeInUp 0.3s ease-out ${staggerDelay(index)}s both`,
                     }}
                   >
                     {activeSourceKey === s.key && (
@@ -859,7 +863,7 @@ export default function SourceBrowserPage() {
                             : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-linear-to-r hover:from-blue-50 hover:to-indigo-50 dark:hover:from-blue-900/20 dark:hover:to-indigo-900/20 hover:border-blue-300 dark:hover:border-blue-700'
                         }`}
                         style={{
-                          animation: `fadeInUp 0.3s ease-out ${index * 0.03}s both`,
+                          animation: `fadeInUp 0.3s ease-out ${staggerDelay(index)}s both`,
                         }}
                       >
                         {String(activeCategory) === String(c.type_id) && (
@@ -903,7 +907,7 @@ export default function SourceBrowserPage() {
                             if (e.key === 'Enter') openPreview(item);
                           }}
                           style={{
-                            animation: `fadeInUp 0.4s ease-out ${index * 0.02}s both`,
+                            animation: `fadeInUp 0.4s ease-out ${staggerDelay(index)}s both`,
                           }}
                         >
                           {/* 发光效果 */}
