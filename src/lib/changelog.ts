@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.4',
+    date: '2026-10-31',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      // 无变更内容
+    ],
+    fixed: [
+      '🔲 添加到主屏幕后手机顶部显示为发灰发糊的一块（Safari 里正常）：主屏幕应用的状态栏改为不透明黑色（apple-mobile-web-app-status-bar-style=black），页面从状态栏下面开始，头部不再依赖顶部安全区。已添加的主屏幕快捷方式需要删除后重新添加才会生效',
+    ],
+  },
+  {
     version: '10.1.3',
     date: '2026-10-31',
     added: [
