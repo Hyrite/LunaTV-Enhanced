@@ -104,6 +104,19 @@ This project is for educational purposes only. Do not use for commercial purpose
 
 ## 🚀 Quick Start
 
+### VPS One-Click Script
+
+For Ubuntu / Debian VPS (amd64, arm64): the script installs Docker, runs LunaTV + Kvrocks with Docker Compose, and serves HTTPS through the host's nginx (port 2096 by default, which works behind the Cloudflare proxy). It uses a certificate already on the server, by default `/root/cert/<domain>/fullchain.pem` and `privkey.pem` (for example one issued by 3x-ui / acme.sh), and does not touch your existing nginx config, certificates or acme.sh settings.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv.sh -o lunatv.sh
+sudo bash lunatv.sh
+```
+
+The installer asks for the domain, port, certificate paths and admin username / password, and re-asks with the reason when an answer is invalid. It checks that the certificate is valid and covers the domain, that the port is free, opens the port in the host firewall (ufw, or the iptables rules shipped with Oracle Cloud images) when needed, and finishes with an HTTPS self-test. Afterwards, run `lunatv` to open the management menu (install, status, info, update, logs, start/stop, uninstall), or run commands directly such as `lunatv status` and `lunatv update`; `lunatv help` lists them all. Extra environment variables such as TMDB can go in `/opt/lunatv/.env` and are kept on reinstall.
+
+Remember to open the public port (TCP 2096 by default) in your cloud provider's firewall.
+
 ### Docker Deployment (Recommended)
 
 ```bash

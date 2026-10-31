@@ -104,6 +104,19 @@
 
 ## 🚀 快速开始
 
+### VPS 一键脚本
+
+适用于 Ubuntu / Debian（amd64、arm64）的 VPS：脚本会安装 Docker，用 Docker Compose 运行 LunaTV + Kvrocks，并由宿主机 nginx 提供 HTTPS（默认 2096 端口，可走 Cloudflare 代理）。证书使用服务器上已有的文件，默认 `/root/cert/<域名>/fullchain.pem` 与 `privkey.pem`（例如 3x-ui / acme.sh 签发的证书），不会改动已有的 nginx 配置、证书和 acme.sh 设置。
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Hyrite/LunaTV-Enhanced/HEAD/deploy/lunatv.sh -o lunatv.sh
+sudo bash lunatv.sh
+```
+
+安装时会询问域名、端口、证书路径和站长用户名 / 密码，输入不合格会提示原因并重新输入；会检查证书是否有效且与域名匹配、端口是否被占用，宿主机防火墙（ufw，或 Oracle Cloud 镜像自带的 iptables 规则）拦截时自动放行端口，最后自检 HTTPS。安装后直接运行 `lunatv` 打开管理菜单（安装、状态、信息、更新、日志、启停、卸载），也可以直接执行 `lunatv status`、`lunatv update` 等命令，`lunatv help` 查看全部命令。TMDB 等其他环境变量可以加到 `/opt/lunatv/.env`，重新安装时会保留。
+
+记得在云服务商防火墙放行对外端口（默认 TCP 2096）。
+
 ### Docker 部署（推荐）
 
 ```bash
