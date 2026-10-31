@@ -265,6 +265,16 @@ export class DbManager {
     await this.storage.registerUser(userName, password);
   }
 
+  async getPasswordHash(userName: string): Promise<string | null> {
+    incrementDbQuery();
+    return this.storage.getPasswordHash(userName);
+  }
+
+  async restoreUser(userName: string, storedPassword: string): Promise<void> {
+    incrementDbQuery();
+    await this.storage.restoreUser(userName, storedPassword);
+  }
+
   async verifyUser(userName: string, password: string): Promise<boolean> {
     incrementDbQuery();
     return this.storage.verifyUser(userName, password);

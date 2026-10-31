@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
         userInfoV2: await db.getUserInfoV2(username),
         // 登录统计（loginCount, firstLoginTime, lastLoginTime）
         loginStats: await getUserLoginStats(username),
-        // 用户密码（V1兼容，通过验证空密码来检查用户是否存在，然后获取密码）
-        password: await getUserPassword(username)
+        // 登录密码（存储里的加盐哈希；V2 信息里不含密码）
+        password: await db.getPasswordHash(username)
       };
 
       exportData.data.userData[username] = userData;
@@ -121,23 +121,6 @@ export async function POST(req: NextRequest) {
       { error: error instanceof Error ? error.message : '导出失败' },
       { status: 500 }
     );
-  }
-}
-
-// 辅助函数：获取用户密码（通过数据库直接访问）
-async function getUserPassword(username: string): Promise<string | null> {
-  try {
-    // 使用 Redis 存储的直接访问方法
-    const storage = (db as any).storage;
-    if (storage && typeof storage.client?.get === 'function') {
-      const passwordKey = `u:${username}:pwd`;
-      const password = await storage.client.get(passwordKey);
-      return password;
-    }
-    return null;
-  } catch (error) {
-    console.error(`获取用户 ${username} 密码失败:`, error);
-    return null;
   }
 }
 

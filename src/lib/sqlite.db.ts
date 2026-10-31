@@ -370,6 +370,23 @@ export class SqliteStorage implements IStorage {
       .run(userName, hashed, Date.now());
   }
 
+  async getPasswordHash(userName: string): Promise<string | null> {
+    const row = this.db
+      .prepare('SELECT password_hash FROM users WHERE username = ?')
+      .get(userName) as { password_hash: string } | undefined;
+    return row ? row.password_hash : null;
+  }
+
+  // 数据导入：备份中的密码已是加盐哈希，原样写入避免二次哈希；旧备份中的明文则先哈希
+  async restoreUser(userName: string, storedPassword: string): Promise<void> {
+    const value = isHashed(storedPassword) ? storedPassword : hashPwd(storedPassword);
+    this.db
+      .prepare(
+        'INSERT OR REPLACE INTO users (username, password_hash, created_at) VALUES (?, ?, ?)',
+      )
+      .run(userName, value, Date.now());
+  }
+
   async verifyUser(userName: string, password: string): Promise<boolean> {
     const row = this.db
       .prepare('SELECT password_hash FROM users WHERE username = ?')
@@ -612,17 +629,15 @@ export class SqliteStorage implements IStorage {
   // ==================== 用户列表 ====================
 
   async getAllUsers(): Promise<string[]> {
-    // 优先 V2 用户列表
+    // V2 用户在前；V1 用户（只有登录密码、没有 V2 信息）也必须包含：后台添加、普通注册、
+    // Telegram 注册的都是 V1 用户，只返回 V2 列表会让他们从后台用户列表、定时任务和数据导出中消失
     const v2Rows = this.db
       .prepare('SELECT username FROM users_v2 ORDER BY created_at ASC')
       .all() as Array<{ username: string }>;
-    if (v2Rows.length > 0) return v2Rows.map((r) => r.username);
-
-    // V1 降级兜底
     const v1Rows = this.db
       .prepare('SELECT username FROM users ORDER BY created_at ASC')
       .all() as Array<{ username: string }>;
-    return v1Rows.map((r) => r.username);
+    return Array.from(new Set([...v2Rows, ...v1Rows].map((r) => r.username)));
   }
 
   // ==================== 管理员配置 ====================

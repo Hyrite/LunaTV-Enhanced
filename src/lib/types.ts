@@ -155,6 +155,10 @@ export interface IStorage {
 
   // 用户相关
   registerUser(userName: string, password: string): Promise<void>;
+  // 读取登录用的密码哈希（数据导出用），用户不存在时返回 null
+  getPasswordHash(userName: string): Promise<string | null>;
+  // 数据导入时恢复登录密码（已是加盐哈希的原样写入，明文则先哈希）
+  restoreUser(userName: string, storedPassword: string): Promise<void>;
   verifyUser(userName: string, password: string): Promise<boolean>;
   // 检查用户是否存在（无需密码）
   checkUserExist(userName: string): Promise<boolean>;

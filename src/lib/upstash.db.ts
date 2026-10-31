@@ -229,6 +229,19 @@ export class UpstashRedisStorage implements IStorage {
     return `u:${user}:pwd`;
   }
 
+  async getPasswordHash(userName: string): Promise<string | null> {
+    const stored = await withRetry(() =>
+      this.client.get(this.userPwdKey(userName))
+    );
+    return stored === null ? null : ensureString(stored as any);
+  }
+
+  // 数据导入：备份中的密码已是加盐哈希，原样写入避免二次哈希；旧备份中的明文则先哈希
+  async restoreUser(userName: string, storedPassword: string): Promise<void> {
+    const value = isHashed(storedPassword) ? storedPassword : hashPwd(storedPassword);
+    await withRetry(() => this.client.set(this.userPwdKey(userName), value));
+  }
+
   async registerUser(userName: string, password: string): Promise<void> {
     const hashed = hashPwd(password);
     await withRetry(() => this.client.set(this.userPwdKey(userName), hashed));
@@ -511,14 +524,15 @@ export class UpstashRedisStorage implements IStorage {
     );
     const v2Users = ensureStringArray(v2Members as any[]);
 
-    // V1 兼容：从 u:*:info keys 扫描（降级兜底，只在 ZSet 为空时触发）
-    if (v2Users.length > 0) return v2Users;
-
+    // V1 用户（只有登录密码、没有 V2 信息）也必须包含：后台添加、普通注册、Telegram 注册的都是 V1 用户，
+    // 只返回 V2 列表会让他们从后台用户列表、定时任务和数据导出中消失
     const v1Keys = await withRetry(() => this.client.keys('u:*:pwd'));
     const v1Users = v1Keys
       .map((k) => { const m = k.match(/^u:(.+?):pwd$/); return m ? ensureString(m[1]) : undefined; })
       .filter((u): u is string => typeof u === 'string');
+    if (v2Users.length > 0) return Array.from(new Set([...v2Users, ...v1Users]));
 
+    // V2 列表为空（旧数据）时，再扫描 V2 信息 key 兜底
     const v2Keys = await withRetry(() => this.client.keys('u:*:info'));
     const v2KeyUsers = v2Keys
       .map((k) => { const m = k.match(/^u:(.+?):info$/); return m ? ensureString(m[1]) : undefined; })

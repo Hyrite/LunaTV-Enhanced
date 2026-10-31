@@ -86,21 +86,24 @@ export async function POST(req: NextRequest) {
     for (const username in userData) {
       const user = userData[username];
 
-      // 优先使用 V2 用户信息创建用户
+      // 恢复 V2 用户信息（角色、用户组、OIDC 绑定等）
       if (user.userInfoV2) {
         console.log(`创建 V2 用户: ${username}`, user.userInfoV2);
         await db.createUserV2(
           username,
-          user.userInfoV2.password || user.password || '', // 优先使用V2加密密码
+          user.userInfoV2.password || user.password || '', // V2 信息里的密码登录时不使用
           user.userInfoV2.role || 'user',
           user.userInfoV2.tags,
           user.userInfoV2.oidcSub, // 恢复 OIDC 绑定
           user.userInfoV2.enabledApis
         );
-      } else if (user.password) {
-        // 兼容旧版本备份（V1用户）
-        console.log(`创建 V1 用户: ${username}`);
-        await db.registerUser(username, user.password);
+      }
+
+      // 恢复登录密码：备份里已是加盐哈希，必须原样写回，不能走 registerUser（会再哈希一次）；
+      // 旧版 Upstash 备份中纯数字明文密码可能被反序列化为数字，统一转为字符串
+      if (user.password) {
+        console.log(`恢复登录密码: ${username}`);
+        await db.restoreUser(username, String(user.password));
       }
     }
 
