@@ -11,6 +11,20 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.1',
+    date: '2026-10-31',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      // 无变更内容
+    ],
+    fixed: [
+      '📱 添加到主屏幕后，手机竖屏时顶部栏（站名、主题和用户菜单按钮）被状态栏遮挡：顶部栏现在会避开顶部安全区（横屏和 Safari 里本来就正常）',
+      '🔑 后台“用户配置”里修改密码后，用户名搜索框被浏览器的密码管理器自动填上用户名：关闭搜索框自动填充，并为修改密码、添加用户表单的字段声明 autocomplete',
+    ],
+  },
+  {
     version: '10.1.0',
     date: '2026-10-31',
     added: [
