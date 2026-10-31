@@ -161,11 +161,10 @@ export default async function RootLayout({
         />
         <meta name='color-scheme' content='light dark' />
         <meta name='google' content='notranslate' />
-        {/* iOS 添加到主屏幕后的状态栏：manifest.json 里的同名字段对 Safari 无效，必须通过 meta 标签设置。
-            用 black（不透明黑色状态栏，页面从状态栏下面开始）而不是 black-translucent（页面铺到状态栏下面）：
-            较新的 iOS 会在 translucent 状态栏区域叠一层模糊和色调，把我们的黑色条带显示成发灰发糊的一块 */}
-        <meta name='apple-mobile-web-app-capable' content='yes' />
-        <meta name='apple-mobile-web-app-status-bar-style' content='black' />
+        {/* 不设置 apple-mobile-web-app-capable / apple-mobile-web-app-status-bar-style，和 LunaTV 一致：
+            添加到主屏幕后由 manifest 的 display: standalone 决定为独立应用，状态栏使用 iOS 默认样式，
+            页面从状态栏下面开始。以前设置 black-translucent（页面铺到状态栏下面）时，较新的 iOS 会在
+            状态栏区域叠一层模糊和色调，主屏幕应用顶部会发灰发糊，LunaTV 没有这个问题 */}
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
