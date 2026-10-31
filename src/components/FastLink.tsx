@@ -40,9 +40,11 @@ interface FastLinkProps {
  * FastLink - High-performance navigation component
  *
  * Supports three navigation modes:
- * 1. Default: SPA navigation with prefetch disabled
+ * 1. Default: standard next/link navigation with prefetch enabled
+ *    (links in the viewport and on touch are prefetched, so taps respond immediately)
  * 2. forceRefresh: Hard browser navigation bypassing React
  * 3. useTransitionNav: Non-blocking navigation using React 18's startTransition
+ *    (keeps the old page on screen until the new one is ready — avoid for nav bars)
  */
 export function FastLink({
   href,
@@ -76,25 +78,23 @@ export function FastLink({
       return;
     }
 
-    // Prevent default navigation
-    e.preventDefault();
-
     // Mode 1: Force refresh - bypass React entirely
     if (forceRefresh) {
+      e.preventDefault();
       window.location.assign(href);
       return;
     }
 
     // Mode 2: Transition navigation - non-blocking
     if (useTransitionNav) {
+      e.preventDefault();
       startTransition(() => {
         router.push(href);
       });
       return;
     }
 
-    // Mode 3: Default - standard Next.js navigation
-    router.push(href);
+    // Mode 3: Default - let next/link navigate (uses its prefetch cache and loading.tsx)
   };
 
   return (
@@ -102,7 +102,6 @@ export function FastLink({
       href={href}
       onClick={handleClick}
       className={className}
-      prefetch={false}
       aria-label={ariaLabel}
       target={target}
       rel={target === '_blank' ? rel || 'noopener noreferrer' : rel}

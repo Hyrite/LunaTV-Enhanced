@@ -220,7 +220,6 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
                 <FastLink
                   key={item.label}
                   href={item.href}
-                  useTransitionNav
                   onClick={() => setActive(item.href)}
                   className='group relative flex items-center gap-2 px-3 lg:px-4 py-2 rounded-full transition-all duration-300 hover:bg-gray-100/50 dark:hover:bg-gray-800/50 whitespace-nowrap shrink-0'
                 >
@@ -314,7 +313,6 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
                   <FastLink
                     key={item.label}
                     href={item.href}
-                    useTransitionNav
                     onClick={() => {
                       setActive(item.href);
                       setShowMoreMenu(false);
@@ -371,7 +369,6 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
               <FastLink
                 key={item.label}
                 href={item.href}
-                useTransitionNav
                 onClick={() => setActive(item.href)}
                 className='flex flex-col items-center justify-center min-w-[60px] flex-1 py-2 px-1 transition-all duration-200 active:scale-95'
               >

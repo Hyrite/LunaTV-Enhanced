@@ -380,7 +380,11 @@ function HomeClient({ initialConfig }: {
   // Reading window.RUNTIME_CONFIG on every render can cause props to change
   const enableVideo = useMemo(() => {
     if (typeof window === 'undefined') return true; // SSR默认启用
-    return !(window as any).RUNTIME_CONFIG?.DISABLE_HERO_TRAILER;
+    if ((window as any).RUNTIME_CONFIG?.DISABLE_HERO_TRAILER) return false;
+    // 手机和省流量模式下不自动播放预告片：视频下载和解码会跟点击抢资源，导致操作卡顿
+    const saveData = (navigator as any).connection?.saveData === true;
+    const isPhone = window.matchMedia('(max-width: 767px)').matches;
+    return !saveData && !isPhone;
   }, []); // Empty deps - only read once on mount
 
   // 🚀 计算 loading 状态：使用 TanStack Query 的 isLoading 状态

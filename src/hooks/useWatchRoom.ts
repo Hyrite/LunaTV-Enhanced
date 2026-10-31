@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 import type {
   ChatMessage,
@@ -14,6 +14,20 @@ import type {
 } from '@/types/watch-room.types';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+
+// socket.io-client 只在真正连接观影室时才加载，没启用观影室时页面不用下载它
+let ioPromise: Promise<typeof import('socket.io-client').io> | null = null;
+function loadSocketIo() {
+  if (!ioPromise) {
+    ioPromise = import('socket.io-client')
+      .then((m) => m.io)
+      .catch((err) => {
+        ioPromise = null; // 下次重试
+        throw err;
+      });
+  }
+  return ioPromise;
+}
 
 export interface UseWatchRoomOptions {
   serverUrl: string;
@@ -88,15 +102,27 @@ export function useWatchRoom(options: UseWatchRoomOptions): UseWatchRoomReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // 正在加载 socket.io 时为 true，避免重复连接
+  const connectingRef = useRef(false);
 
   // 连接到观影室服务器
-  const connect = useCallback(() => {
-    if (socket) {
+  const connect = useCallback(async () => {
+    if (socket || connectingRef.current) {
       console.log('[WatchRoom] Already connected');
       return;
     }
 
     console.log('[WatchRoom] Connecting to server:', serverUrl);
+
+    connectingRef.current = true;
+    let io: Awaited<ReturnType<typeof loadSocketIo>>;
+    try {
+      io = await loadSocketIo();
+    } catch {
+      connectingRef.current = false;
+      onError?.('观影室组件加载失败，请检查网络后重试');
+      return;
+    }
 
     const newSocket = io(serverUrl, {
       auth: {
@@ -259,6 +285,7 @@ export function useWatchRoom(options: UseWatchRoomOptions): UseWatchRoomReturn {
     });
 
     setSocket(newSocket);
+    connectingRef.current = false;
   }, [serverUrl, authKey, onError, onDisconnect, socket]);
 
   // 断开连接

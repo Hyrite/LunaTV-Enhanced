@@ -517,3 +517,36 @@ html:not(.dark) .hover\:bg-slate-50:hover {
 .animate-shake-in {
   animation: shake-in 0.35s ease-out forwards;
 }
+
+/*
+ * 触屏设备（手机、平板）上输入框字号不足 16px 时，iOS 聚焦输入框会自动放大页面，
+ * 而且离开页面后不会缩回去（例如登录后整页偏大）。
+ * - base 层：输入框默认至少 16px（没写字号类、继承了小字号的也算）；写了字号类的仍以类为准
+ * - utilities 层：把常见的小字号类在触屏设备上提到 16px
+ */
+@layer base {
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: max(16px, 1em);
+    }
+  }
+}
+
+@layer utilities {
+  @media (pointer: coarse) {
+    :is(input, textarea, select):is(
+        .text-xs,
+        .text-sm,
+        .text-\[10px\],
+        .text-\[11px\],
+        .text-\[12px\],
+        .text-\[13px\],
+        .text-\[14px\],
+        .text-\[15px\]
+      ) {
+      font-size: 16px;
+    }
+  }
+}
