@@ -28,7 +28,8 @@ const BackToTopButton = memo(function BackToTopButton({
       style={{
         position: 'fixed',
         right: '1.5rem',
-        bottom: typeof window !== 'undefined' && window.innerWidth < 768 ? '5rem' : '1.5rem',
+        // 手机上要放在底部导航栏（约 76px）和安全区之上，否则会盖住最右边的“更多”
+        bottom: typeof window !== 'undefined' && window.innerWidth < 768 ? 'calc(5.75rem + env(safe-area-inset-bottom))' : '1.5rem',
         left: 'auto'
       }}
       aria-label='返回顶部'

@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { ClientCache } from '@/lib/client-cache';
 import PageLayout from '@/components/PageLayout';
+import QueuedImage from '@/components/QueuedImage';
 import type { DoubanItem, SearchResult as GlobalSearchResult } from '@/lib/types';
 
 type Source = { key: string; name: string; api: string };
@@ -910,11 +911,10 @@ export default function SourceBrowserPage() {
 
                           <div className='aspect-[2/3] bg-linear-to-br from-gray-100 via-gray-50 to-gray-100 dark:from-gray-700 dark:via-gray-800 dark:to-gray-700 overflow-hidden relative'>
                             {item.poster ? (
-                              <img
+                              <QueuedImage
                                 src={item.poster}
                                 alt={item.title}
                                 className='w-full h-full object-cover group-hover:scale-110 transition-transform duration-500'
-                                loading='lazy'
                               />
                             ) : (
                               <div className='w-full h-full flex items-center justify-center text-gray-400 text-xs sm:text-sm'>

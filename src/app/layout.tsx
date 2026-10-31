@@ -22,7 +22,7 @@ import { WatchRoomProvider } from '../components/WatchRoomProvider';
 import { DownloadProvider } from '../contexts/DownloadContext';
 import { GlobalCacheProvider } from '../contexts/GlobalCacheContext';
 import QueryProvider from '../components/QueryProvider';
-import { CinematicLoadingFallback } from '../components/CinematicLoadingFallback';
+import RouteLoading from './loading';
 
 // 懒加载非关键 UI 组件，减少首屏 JS 体积（代码分割）
 // 未设置 ssr: false，保持服务端渲染兼容性
@@ -212,11 +212,9 @@ export default async function RootLayout({
                     <main className='w-full min-h-screen pt-[calc(44px+env(safe-area-inset-top))] md:pt-16 pb-16 md:pb-8'>
                       <div className='w-full max-w-[2560px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 2xl:px-20'>
                         <DOMErrorBoundary componentName="PageContent">
-                          <Suspense fallback={
-                            <div className="fixed inset-0 z-50">
-                              <CinematicLoadingFallback />
-                            </div>
-                          }>
+                          {/* 占位放在页面区域内：以前是 fixed inset-0 z-50 的全屏遮罩，会盖住底部导航，
+                              加载期间点不了导航（LunaTV 没有这层遮罩，导航始终可点） */}
+                          <Suspense fallback={<RouteLoading />}>
                             {children}
                           </Suspense>
                         </DOMErrorBoundary>
