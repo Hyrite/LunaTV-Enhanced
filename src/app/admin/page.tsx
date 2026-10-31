@@ -1506,7 +1506,13 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
             {/* 用户名搜索框 */}
             <input
               type='search'
+              name='admin-user-filter'
               aria-label='搜索用户名'
+              // 修改密码时浏览器的密码管理器会把已保存的用户名（如 admin）自动填进离密码框最近的文本框，
+              // 这里明确关闭自动填充，避免搜索框被悄悄填上用户名
+              autoComplete='off'
+              data-1p-ignore
+              data-lpignore='true'
               value={filterUsername}
               onChange={(e) => setFilterUsername(e.target.value)}
               placeholder='搜索用户名...'
@@ -1554,6 +1560,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 <input
                   type='text'
                   placeholder='用户名'
+                  name='new-user-name'
+                  autoComplete='off'
                   value={newUser.username}
                   onChange={(e) =>
                     setNewUser((prev) => ({ ...prev, username: e.target.value }))
@@ -1562,6 +1570,8 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
                 />
                 <input
                   type='password'
+                  name='new-user-password'
+                  autoComplete='new-password'
                   placeholder='密码'
                   value={newUser.password}
                   onChange={(e) =>
@@ -1612,12 +1622,16 @@ const UserConfig = ({ config, role, refreshConfig }: UserConfigProps) => {
               <input
                 type='text'
                 placeholder='用户名'
+                name='username'
+                autoComplete='username'
                 value={changePasswordUser.username}
                 disabled
                 className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 cursor-not-allowed'
               />
               <input
                 type='password'
+                name='new-password'
+                autoComplete='new-password'
                 placeholder='新密码'
                 value={changePasswordUser.password}
                 onChange={(e) =>

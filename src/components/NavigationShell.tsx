@@ -56,7 +56,12 @@ export default function NavigationShell() {
       />
 
       {/* 移动端头部 - Logo和用户菜单 */}
-      <div className='md:hidden fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm'>
+      {/* 添加到主屏幕后（PWA 沉浸式状态栏）竖屏时顶部有安全区，头部要整体下移，
+          否则 44px 的头部会被状态栏遮挡条完全盖住（横屏和 Safari 里安全区为 0，所以正常） */}
+      <div
+        className='md:hidden fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-sm'
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className='flex items-center justify-between h-11 px-4'>
           {/* Logo */}
           <div className='text-base font-bold bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 dark:from-green-400 dark:via-emerald-400 dark:to-teal-400 bg-clip-text text-transparent'>
