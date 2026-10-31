@@ -158,7 +158,8 @@ export async function validateInviteCode(
  * @param code 邀请码
  * @param username 使用者用户名
  */
-export async function useInviteCode(code: string, username: string): Promise<boolean> {
+// 注意：不要以 use 开头命名，否则会被当成 React Hook（ESLint 会报错）
+export async function consumeInviteCode(code: string, username: string): Promise<boolean> {
   const client = getRedisClient();
 
   // 先验证邀请码

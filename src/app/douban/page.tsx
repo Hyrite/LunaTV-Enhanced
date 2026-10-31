@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useInfiniteQuery, infiniteQueryOptions } from '@tanstack/react-query';
 
 import { isAIRecommendFeatureDisabled } from '@/lib/ai-recommend.client';
-import { GetBangumiCalendarData } from '@/lib/bangumi.client';
+import { GetBangumiCalendarData, getBangumiCoverUrl } from '@/lib/bangumi.client';
 import {
   getDoubanCategories,
   getDoubanList,
@@ -68,13 +68,7 @@ const doubanListOptions = (
           list: weekdayData.items.map((item) => ({
             id: item.id?.toString() || '',
             title: item.name_cn || item.name,
-            poster:
-              item.images?.large ||
-              item.images?.common ||
-              item.images?.medium ||
-              item.images?.small ||
-              item.images?.grid ||
-              '/placeholder-poster.jpg',
+            poster: getBangumiCoverUrl(item.images),
             rate: item.rating?.score?.toFixed(1) || '',
             year: item.air_date?.split('-')?.[0] || '',
           })),

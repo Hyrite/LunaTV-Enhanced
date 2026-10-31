@@ -13,7 +13,7 @@
  */
 
 import { useQueries } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 interface TMDBData {
   backdrop: string | null;
@@ -55,27 +55,42 @@ async function fetchTMDBData(title: string, year?: string, type?: string): Promi
  * ```
  */
 export function useTMDBLogos(items: Array<{ title: string; year?: string; type?: string }>): Record<string, string | null> {
-  // 使用 useCallback 缓存 combine 函数，避免每次渲染都重新创建
-  const combine = useCallback((results: any[]) => {
+  // 调用方经常每次渲染都传入新数组（例如 items.map(...)）。如果直接用数组做依赖，
+  // combine 每次都会变，useQueries 每次都会重新计算并通知订阅者，形成渲染死循环
+  // （生产环境 React 报错 #185 “Maximum update depth exceeded”）。
+  // 这里按内容生成稳定的 key，只有标题/年份/类型真正变化时才重建查询和 combine。
+  const itemsKey = items
+    .map((item) => `${item.title}\u0001${item.year ?? ''}\u0001${item.type ?? ''}`)
+    .join('\u0002');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const stableItems = useMemo(() => items, [itemsKey]);
+
+  const combine = useCallback((results: Array<{ data?: { logo?: string | null } }>) => {
     // Build a map of title -> logo
     const logosMap: Record<string, string | null> = {};
-    items.forEach((item, index) => {
+    stableItems.forEach((item, index) => {
       const result = results[index];
-      logosMap[item.title] = result.data?.logo || null;
+      logosMap[item.title] = result?.data?.logo || null;
     });
     return logosMap;
-  }, [items]);
+  }, [stableItems]);
+
+  const queries = useMemo(
+    () =>
+      stableItems.map((item) => ({
+        queryKey: ['tmdb-logo', item.title, item.year, item.type],
+        queryFn: () => fetchTMDBData(item.title, item.year, item.type),
+        staleTime: 24 * 60 * 60 * 1000, // 24 hours - TMDB data rarely changes
+        gcTime: 7 * 24 * 60 * 60 * 1000, // 7 days
+        retry: 1, // 失败重试1次
+        enabled: !!item.title, // Only fetch if title exists
+      })),
+    [stableItems],
+  );
 
   // 使用 useQueries 并行获取所有 TMDB logos
   return useQueries({
-    queries: items.map((item) => ({
-      queryKey: ['tmdb-logo', item.title, item.year, item.type],
-      queryFn: () => fetchTMDBData(item.title, item.year, item.type),
-      staleTime: 24 * 60 * 60 * 1000, // 24 hours - TMDB data rarely changes
-      gcTime: 7 * 24 * 60 * 60 * 1000, // 7 days
-      retry: 1, // 失败重试1次
-      enabled: !!item.title, // Only fetch if title exists
-    })),
+    queries,
     combine,
   });
 }

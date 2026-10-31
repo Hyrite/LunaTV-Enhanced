@@ -524,6 +524,15 @@ export class DbManager {
     }
   }
 
+  // 清理某一前缀下的全部缓存（不论是否过期），仅供管理员手动清理使用
+  async clearCacheByPrefix(prefix: string): Promise<number> {
+    incrementDbQuery();
+    if (typeof this.storage.clearCacheByPrefix === 'function') {
+      return this.storage.clearCacheByPrefix(prefix);
+    }
+    return 0;
+  }
+
   // ---------- 播放统计相关 ----------
   async getPlayStats(): Promise<PlayStatsResult> {
     incrementDbQuery();

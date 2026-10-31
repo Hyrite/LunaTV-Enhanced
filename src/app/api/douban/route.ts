@@ -5,6 +5,7 @@ import { fetchDoubanData } from '@/lib/douban';
 import { DoubanItem, DoubanResult } from '@/lib/types';
 import { getRandomUserAgent } from '@/lib/user-agent';
 import { recordRequest } from '@/lib/performance-monitor';
+import { withServerCache } from '@/lib/server-route-cache';
 
 interface DoubanApiResponse {
   subjects: Array<{
@@ -17,7 +18,7 @@ interface DoubanApiResponse {
 
 export const runtime = 'nodejs';
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const startTime = Date.now();
   const startMemory = process.memoryUsage().heapUsed;
 
@@ -253,3 +254,9 @@ function handleTop250(pageStart: number) {
       );
     });
 }
+
+// 服务端共享缓存（标签列表 2 小时）：命中时不再请求豆瓣，浏览器端也不必再自己读写 /api/cache
+export const GET = withServerCache(handleGET, {
+  keyPrefix: 'douban-api-list-',
+  ttlSeconds: 2 * 60 * 60,
+});

@@ -477,7 +477,7 @@ export async function GET(request: Request) {
           timestamp: startTime,
           method: 'GET',
           path: '/api/douban/refresh-trailer',
-          statusCode: 404,
+          statusCode: 200,
           duration: Date.now() - startTime,
           memoryUsed: (process.memoryUsage().heapUsed - startMemory) / 1024 / 1024,
           dbQueries: 0,
@@ -485,7 +485,8 @@ export async function GET(request: Request) {
           responseSize: noTrailerSize,
         });
 
-        return NextResponse.json(noTrailerResponse, { status: 404 });
+        // “没有预告片”是正常结果，不是错误：返回 200，避免浏览器控制台出现红色 404
+        return NextResponse.json(noTrailerResponse, { status: 200 });
       } else if (cached.status === 'failed') {
         const failedResponse = {
           code: 500,
@@ -594,7 +595,7 @@ export async function GET(request: Request) {
           code: 404,
           message: '该影片没有预告片',
           error: 'NO_TRAILER',
-        }, { status: 404 });
+        }, { status: 200 });
       } else {
         return NextResponse.json({
           code: 500,
@@ -725,7 +726,7 @@ export async function GET(request: Request) {
         timestamp: startTime,
         method: 'GET',
         path: '/api/douban/refresh-trailer',
-        statusCode: 404,
+        statusCode: 200,
         duration: Date.now() - startTime,
         memoryUsed: (process.memoryUsage().heapUsed - startMemory) / 1024 / 1024,
         dbQueries: 0,
@@ -733,7 +734,8 @@ export async function GET(request: Request) {
         responseSize: noTrailerSize,
       });
 
-      return NextResponse.json(noTrailerResponse, { status: 404 });
+      // “没有预告片”是正常结果，不是错误：返回 200，避免浏览器控制台出现红色 404
+      return NextResponse.json(noTrailerResponse, { status: 200 });
     } else {
       // failed
       const failedResponse = {

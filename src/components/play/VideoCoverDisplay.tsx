@@ -1,5 +1,7 @@
 'use client';
 
+import { getBangumiCoverUrl } from '@/lib/bangumi.client';
+
 interface VideoCoverDisplayProps {
   videoCover: string;
   bangumiDetails: {
@@ -36,7 +38,7 @@ export default function VideoCoverDisplay({
               />
 
               <img
-                src={processImageUrl(bangumiDetails?.images?.large || videoCover)}
+                src={processImageUrl(bangumiDetails?.images?.large ? getBangumiCoverUrl(bangumiDetails.images, 800) : videoCover)}
                 alt={videoTitle}
                 className='w-full h-full object-cover transition-transform duration-500 group-hover:scale-105'
               />

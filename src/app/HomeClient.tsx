@@ -5,12 +5,10 @@
 import { ChevronRight, Film, Tv, Calendar, Sparkles, Play, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense, useEffect, useState, useRef, useMemo, useReducer, useTransition } from 'react';
-import { useQuery, queryOptions } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-import {
-  BangumiCalendarData,
-} from '@/lib/bangumi.client';
-import { cleanExpiredCache, clearRecommendsCache } from '@/lib/shortdrama-cache';
+import { getBangumiCoverUrl } from '@/lib/bangumi.client';
+import { cleanExpiredCache } from '@/lib/shortdrama-cache';
 import { ShortDramaItem, ReleaseCalendarItem } from '@/lib/types';
 import { useClearFavoritesMutation } from '@/hooks/useFavoritesMutations';
 import { useClearRemindersMutation } from '@/hooks/useRemindersMutations';
@@ -19,7 +17,6 @@ import { useTMDBLogos } from '@/hooks/useTMDBLogo';
 import { getDoubanDetails } from '@/lib/douban.client';
 import { DoubanItem } from '@/lib/types';
 import { getAuthInfoFromBrowserCookie } from '@/lib/auth';
-import { CinematicLoadingFallback } from '@/components/CinematicLoadingFallback';
 import { useFavoritesQuery } from '@/hooks/useFavoritesQuery';
 import { usePlayRecordsQuery } from '@/hooks/usePlayRecordsQuery';
 import { useRemindersQuery } from '@/hooks/useRemindersQuery';
@@ -28,6 +25,7 @@ import { useWatchingUpdatesQuery } from '@/hooks/useWatchingUpdates';
 import CapsuleSwitch from '@/components/CapsuleSwitch';
 import ContinueWatching from '@/components/ContinueWatching';
 import HeroBanner from '@/components/HeroBanner';
+import LazySection from '@/components/LazySection';
 import PageLayout from '@/components/PageLayout';
 import ScrollableRow from '@/components/ScrollableRow';
 import SectionTitle from '@/components/SectionTitle';
@@ -39,16 +37,10 @@ import VideoCard from '@/components/VideoCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 // 🎯 优化：合并状态管理 - 使用 useReducer 减少重渲染
+// 热门列表等首页数据直接来自 TanStack Query（useHomePageQueries），不再复制一份到本地状态
 interface HomeState {
   activeTab: 'home' | 'favorites' | 'reminders';
-  hotMovies: DoubanItem[];
-  hotTvShows: DoubanItem[];
-  hotVarietyShows: DoubanItem[];
-  hotAnime: DoubanItem[];
-  hotShortDramas: ShortDramaItem[];
-  bangumiCalendarData: BangumiCalendarData[];
   upcomingReleases: ReleaseCalendarItem[];
-  loading: boolean;
   username: string;
   showAnnouncement: boolean;
   homePageConfig: {
@@ -65,63 +57,46 @@ interface HomeState {
 
 type HomeAction =
   | { type: 'SET_ACTIVE_TAB'; payload: 'home' | 'favorites' | 'reminders' }
-  | { type: 'SET_HOT_MOVIES'; payload: DoubanItem[] }
-  | { type: 'SET_HOT_TV_SHOWS'; payload: DoubanItem[] }
-  | { type: 'SET_HOT_VARIETY_SHOWS'; payload: DoubanItem[] }
-  | { type: 'SET_HOT_ANIME'; payload: DoubanItem[] }
-  | { type: 'SET_HOT_SHORT_DRAMAS'; payload: ShortDramaItem[] }
-  | { type: 'SET_BANGUMI_CALENDAR_DATA'; payload: BangumiCalendarData[] }
   | { type: 'SET_UPCOMING_RELEASES'; payload: ReleaseCalendarItem[] }
-  | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_USERNAME'; payload: string }
   | { type: 'SET_SHOW_ANNOUNCEMENT'; payload: boolean }
-  | { type: 'SET_HOME_PAGE_CONFIG'; payload: HomeState['homePageConfig'] }
-  | { type: 'UPDATE_HOT_MOVIES'; payload: (prev: DoubanItem[]) => DoubanItem[] }
-  | { type: 'UPDATE_HOT_TV_SHOWS'; payload: (prev: DoubanItem[]) => DoubanItem[] }
-  | { type: 'UPDATE_HOT_VARIETY_SHOWS'; payload: (prev: DoubanItem[]) => DoubanItem[] }
-  | { type: 'UPDATE_HOT_ANIME'; payload: (prev: DoubanItem[]) => DoubanItem[] }
-  | { type: 'UPDATE_HOT_SHORT_DRAMAS'; payload: (prev: ShortDramaItem[]) => ShortDramaItem[] };
+  | { type: 'SET_HOME_PAGE_CONFIG'; payload: HomeState['homePageConfig'] };
 
 const homeReducer = (state: HomeState, action: HomeAction): HomeState => {
   switch (action.type) {
     case 'SET_ACTIVE_TAB':
       return { ...state, activeTab: action.payload };
-    case 'SET_HOT_MOVIES':
-      return { ...state, hotMovies: action.payload };
-    case 'SET_HOT_TV_SHOWS':
-      return { ...state, hotTvShows: action.payload };
-    case 'SET_HOT_VARIETY_SHOWS':
-      return { ...state, hotVarietyShows: action.payload };
-    case 'SET_HOT_ANIME':
-      return { ...state, hotAnime: action.payload };
-    case 'SET_HOT_SHORT_DRAMAS':
-      return { ...state, hotShortDramas: action.payload };
-    case 'SET_BANGUMI_CALENDAR_DATA':
-      return { ...state, bangumiCalendarData: action.payload };
     case 'SET_UPCOMING_RELEASES':
       return { ...state, upcomingReleases: action.payload };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
     case 'SET_USERNAME':
       return { ...state, username: action.payload };
     case 'SET_SHOW_ANNOUNCEMENT':
       return { ...state, showAnnouncement: action.payload };
     case 'SET_HOME_PAGE_CONFIG':
       return { ...state, homePageConfig: action.payload };
-    case 'UPDATE_HOT_MOVIES':
-      return { ...state, hotMovies: action.payload(state.hotMovies) };
-    case 'UPDATE_HOT_TV_SHOWS':
-      return { ...state, hotTvShows: action.payload(state.hotTvShows) };
-    case 'UPDATE_HOT_VARIETY_SHOWS':
-      return { ...state, hotVarietyShows: action.payload(state.hotVarietyShows) };
-    case 'UPDATE_HOT_ANIME':
-      return { ...state, hotAnime: action.payload(state.hotAnime) };
-    case 'UPDATE_HOT_SHORT_DRAMAS':
-      return { ...state, hotShortDramas: action.payload(state.hotShortDramas) };
     default:
       return state;
   }
 };
+
+// Hero 轮播需要的豆瓣详情（简介、背景图、预告片），按豆瓣 id 合并到列表数据上
+type DoubanHeroDetails = Pick<DoubanItem, 'plot_summary' | 'backdrop' | 'trailerUrl'>;
+
+function mergeDetails(list: DoubanItem[], details: Record<string, DoubanHeroDetails>): DoubanItem[] {
+  if (!list.some((item) => details[item.id])) return list;
+  return list.map((item) => (details[item.id] ? { ...item, ...details[item.id] } : item));
+}
+
+// 首页每一行加载中显示的占位卡片
+function RowSkeleton() {
+  return (
+    <>
+      {Array.from({ length: 8 }).map((_, index) => (
+        <SkeletonCard key={index} />
+      ))}
+    </>
+  );
+}
 
 // Query Options 工厂函数 - 使用新的 TanStack Query hooks
 import { favoritesQueryOptions } from '@/hooks/useFavoritesQuery';
@@ -175,14 +150,7 @@ function HomeClient({ initialConfig }: {
   // 🔥 使用服务端传来的配置作为初始值
   const [state, dispatch] = useReducer(homeReducer, {
     activeTab: 'home',
-    hotMovies: [],
-    hotTvShows: [],
-    hotVarietyShows: [],
-    hotAnime: [],
-    hotShortDramas: [],
-    bangumiCalendarData: [],
     upcomingReleases: [],
-    loading: true,
     username: '',
     showAnnouncement: false,
     homePageConfig: initialConfig, // 🔥 使用服务端配置
@@ -190,13 +158,12 @@ function HomeClient({ initialConfig }: {
 
   // 🚀 TanStack Query - 首页数据查询（替代 GlobalCache）
   // 🔥 传入配置，只加载需要显示的模块数据
-  const {
-    data: homeData,
-    isLoading: homeLoading,
-    isFetching: homeFetching,
-    errors: homeErrors,
-    refetch: refetchHomeData,
-  } = useHomePageQueries(stableConfig);
+  // 每一行有自己的加载状态：哪行数据先到就先显示哪行
+  const { data: homeData, sectionLoading } = useHomePageQueries(stableConfig);
+  const queryClient = useQueryClient();
+
+  // Hero 轮播用到的详情，按豆瓣 id 存放
+  const [doubanDetails, setDoubanDetails] = useState<Record<string, DoubanHeroDetails>>({});
 
   const { announcement } = useSite();
 
@@ -208,97 +175,14 @@ function HomeClient({ initialConfig }: {
     showAnnouncement,
   } = state;
 
-  // 🚀 从 TanStack Query 获取首页数据，本地状态作为详情增强
-  // 🔥 保留上一次的数据，避免 refetch 时数据暂时为空导致 HeroBanner 卸载
-  const prevHotMoviesRef = useRef<any[]>([]);
-  const hotMovies = useMemo(() => {
-    const cached = homeData?.hotMovies || [];
-    // 如果有新数据，更新 ref 并返回
-    if (cached.length > 0) {
-      prevHotMoviesRef.current = cached;
-    }
-    // 如果新数据为空且正在加载，使用上一次的数据
-    const dataToUse = cached.length === 0 && homeFetching ? prevHotMoviesRef.current : cached;
+  // 🚀 首页数据直接来自 TanStack Query（重新请求期间会保留旧数据，不会闪空），再合并 Hero 需要的详情
+  const hotMovies = useMemo(() => mergeDetails(homeData.hotMovies, doubanDetails), [homeData.hotMovies, doubanDetails]);
+  const hotTvShows = useMemo(() => mergeDetails(homeData.hotTvShows, doubanDetails), [homeData.hotTvShows, doubanDetails]);
+  const hotVarietyShows = useMemo(() => mergeDetails(homeData.hotVarietyShows, doubanDetails), [homeData.hotVarietyShows, doubanDetails]);
+  const hotAnime = useMemo(() => mergeDetails(homeData.hotAnime, doubanDetails), [homeData.hotAnime, doubanDetails]);
+  const hotShortDramas = homeData.hotShortDramas;
 
-    // 合并本地详情数据
-    if (state.hotMovies.length > 0 && dataToUse.length > 0) {
-      return dataToUse.map(m => {
-        const local = state.hotMovies.find(lm => lm.id === m.id);
-        return local ? { ...m, ...local } : m;
-      });
-    }
-    return dataToUse;
-  }, [homeData?.hotMovies, state.hotMovies, homeFetching]);
-
-  const prevHotTvShowsRef = useRef<any[]>([]);
-  const hotTvShows = useMemo(() => {
-    const cached = homeData?.hotTvShows || [];
-    if (cached.length > 0) {
-      prevHotTvShowsRef.current = cached;
-    }
-    const dataToUse = cached.length === 0 && homeFetching ? prevHotTvShowsRef.current : cached;
-
-    if (state.hotTvShows.length > 0 && dataToUse.length > 0) {
-      return dataToUse.map(s => {
-        const local = state.hotTvShows.find(ls => ls.id === s.id);
-        return local ? { ...s, ...local } : s;
-      });
-    }
-    return dataToUse;
-  }, [homeData?.hotTvShows, state.hotTvShows, homeFetching]);
-
-  const prevHotVarietyShowsRef = useRef<any[]>([]);
-  const hotVarietyShows = useMemo(() => {
-    const cached = homeData?.hotVarietyShows || [];
-    if (cached.length > 0) {
-      prevHotVarietyShowsRef.current = cached;
-    }
-    const dataToUse = cached.length === 0 && homeFetching ? prevHotVarietyShowsRef.current : cached;
-
-    if (state.hotVarietyShows.length > 0 && dataToUse.length > 0) {
-      return dataToUse.map(s => {
-        const local = state.hotVarietyShows.find(ls => ls.id === s.id);
-        return local ? { ...s, ...local } : s;
-      });
-    }
-    return dataToUse;
-  }, [homeData?.hotVarietyShows, state.hotVarietyShows, homeFetching]);
-
-  const prevHotAnimeRef = useRef<any[]>([]);
-  const hotAnime = useMemo(() => {
-    const cached = homeData?.hotAnime || [];
-    if (cached.length > 0) {
-      prevHotAnimeRef.current = cached;
-    }
-    const dataToUse = cached.length === 0 && homeFetching ? prevHotAnimeRef.current : cached;
-
-    if (state.hotAnime.length > 0 && dataToUse.length > 0) {
-      return dataToUse.map(a => {
-        const local = state.hotAnime.find(la => la.id === a.id);
-        return local ? { ...a, ...local } : a;
-      });
-    }
-    return dataToUse;
-  }, [homeData?.hotAnime, state.hotAnime, homeFetching]);
-
-  const prevHotShortDramasRef = useRef<any[]>([]);
-  const hotShortDramas = useMemo(() => {
-    const cached = homeData?.hotShortDramas || [];
-    if (cached.length > 0) {
-      prevHotShortDramasRef.current = cached;
-    }
-    const dataToUse = cached.length === 0 && homeFetching ? prevHotShortDramasRef.current : cached;
-
-    if (state.hotShortDramas.length > 0 && dataToUse.length > 0) {
-      return dataToUse.map(d => {
-        const local = state.hotShortDramas.find(ld => ld.id === d.id);
-        return local ? { ...d, ...local } : d;
-      });
-    }
-    return dataToUse;
-  }, [homeData?.hotShortDramas, state.hotShortDramas, homeFetching]);
-
-  const bangumiCalendarData = Array.isArray(homeData?.bangumiCalendar) ? homeData.bangumiCalendar : [];
+  const bangumiCalendarData = homeData.bangumiCalendar;
 
   // 🚀 Memoize HeroBanner items to prevent unnecessary re-renders
   // HeroBanner uses React.memo, but items array is recreated on every render
@@ -359,13 +243,15 @@ function HomeClient({ initialConfig }: {
   ], [hotMovies, hotTvShows, hotVarietyShows, hotAnime]);
 
   // 🚀 Fetch TMDB logos for hero banner items
-  const tmdbLogos = useTMDBLogos(
-    heroBannerItems.map(item => ({
+  const tmdbLogoItems = useMemo(
+    () => heroBannerItems.map(item => ({
       title: item.title,
       year: item.year,
       type: item.type,
-    }))
+    })),
+    [heroBannerItems]
   );
+  const tmdbLogos = useTMDBLogos(tmdbLogoItems);
 
   // 🚀 Merge TMDB logos into hero banner items
   const heroBannerItemsWithLogos = useMemo(() =>
@@ -387,11 +273,12 @@ function HomeClient({ initialConfig }: {
     return !saveData && !isPhone;
   }, []); // Empty deps - only read once on mount
 
-  // 🚀 计算 loading 状态：使用 TanStack Query 的 isLoading 状态
-  // isLoading = 任何查询正在首次加载（没有缓存数据）
-  // 这确保用户看到的是完整加载好的页面，而不是部分内容逐渐出现
-  // 参考 TanStack Query 官方文档 useQueries combine 示例
-  const loading = homeLoading;
+  // Hero 轮播的数据还没到时显示同尺寸占位，避免内容到达后整页往下跳
+  const heroLoading =
+    sectionLoading.hotMovies ||
+    sectionLoading.hotTvShows ||
+    sectionLoading.hotVarietyShows ||
+    sectionLoading.hotAnime;
 
   // 🚀 Web Worker引用
   const workerRef = useRef<Worker | null>(null);
@@ -584,11 +471,10 @@ function HomeClient({ initialConfig }: {
   }, [favoriteItems]);
 
   useEffect(() => {
-    // 清理过期缓存
+    // 清理本机 localStorage 中过期的短剧缓存
+    // （不再在每次进入首页时删除服务端的短剧推荐缓存：空结果本来就不会被缓存，
+    //  而删除会让所有用户的推荐缓存失效，每次都要重新请求上游）
     cleanExpiredCache().catch(console.error);
-
-    // 清除可能缓存了空数据的短剧推荐缓存
-    clearRecommendsCache().catch(console.error);
 
     // 🔥 配置已经从服务端传入，不需要客户端再次获取
 
@@ -604,132 +490,71 @@ function HomeClient({ initialConfig }: {
     };
   }, []);
 
-  // 如果首页数据加载完成但热门短剧为空，强制刷新（可能之前缓存了空数据）
+  // 热门短剧为空时（可能之前缓存了空数据）只重新请求一次短剧接口。
+  // 以前这里会刷新全部 6 个首页接口，而且每次数据变化都会再触发一次，短剧源不可用时会一直循环请求
+  const shortDramaRetriedRef = useRef(false);
   useEffect(() => {
-    if (homeData && homeData.hotShortDramas.length === 0 && !homeLoading) {
-      console.log('[TanStack Query] 热门短剧为空，强制刷新首页数据');
-      refetchHomeData();
-    }
-  }, [homeData, homeLoading, refetchHomeData]);
+    if (!state.homePageConfig.showHotShortDramas || sectionLoading.hotShortDramas) return;
+    if (homeData.hotShortDramas.length > 0 || shortDramaRetriedRef.current) return;
+    shortDramaRetriedRef.current = true;
+    console.log('[TanStack Query] 热门短剧为空，重新请求一次短剧推荐');
+    queryClient.refetchQueries({ queryKey: ['shortdramas', 'recommended', 8], exact: true });
+  }, [state.homePageConfig.showHotShortDramas, sectionLoading.hotShortDramas, homeData.hotShortDramas, queryClient]);
 
-  // 🚀 当 GlobalCache 数据加载完成后，延迟加载详情数据
-  // 🔥 只加载显示模块的详情，节省带宽和性能
+  // 🚀 首页列表到达后，延迟获取 Hero 轮播条目的详情（简介、背景图、预告片）
+  // 只按条目 id 变化触发，每个 id 只请求一次（以前每次查询状态变化都会重新请求全部详情）
+  const heroDetailIds = useMemo(() => {
+    const cfg = state.homePageConfig;
+    if (!cfg.showHeroBanner) return [] as string[];
+    return [
+      ...(cfg.showHotMovies ? homeData.hotMovies.slice(0, 2) : []),
+      ...(cfg.showHotTvShows ? homeData.hotTvShows.slice(0, 2) : []),
+      ...(cfg.showNewAnime ? homeData.hotAnime.slice(0, 1) : []),
+      ...(cfg.showHotVariety ? homeData.hotVarietyShows.slice(0, 1) : []),
+    ].map((item) => item.id);
+  }, [homeData.hotMovies, homeData.hotTvShows, homeData.hotAnime, homeData.hotVarietyShows, state.homePageConfig]);
+  const heroDetailKey = heroDetailIds.join(',');
+  const requestedDetailIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    if (!homeData) return;
+    const pending = heroDetailIds.filter((id) => !requestedDetailIdsRef.current.has(id));
+    if (pending.length === 0) return;
 
-    // 延迟加载电影详情 - 只在显示电影模块时加载
-    if (state.homePageConfig.showHotMovies && homeData.hotMovies.length > 0) {
-      setTimeout(() => {
-        Promise.all(
-          homeData.hotMovies.slice(0, 2).map(async (movie) => {
-            try {
-              const detailsRes = await getDoubanDetails(movie.id);
-              if (detailsRes.code === 200 && detailsRes.data) {
-                return {
-                  id: movie.id,
-                  plot_summary: detailsRes.data.plot_summary,
-                  backdrop: detailsRes.data.backdrop,
-                  trailerUrl: detailsRes.data.trailerUrl,
-                };
-              }
-            } catch (error) {
-              console.warn(`获取电影 ${movie.id} 详情失败:`, error);
-            }
-            return null;
-          })
-        ).then((results) => {
-          dispatch({
-            type: 'UPDATE_HOT_MOVIES',
-            payload: (prev) => {
-              const base = prev.length > 0 ? prev : homeData.hotMovies;
-              return base.map(m => {
-                const detail = results.find(r => r?.id === m.id);
-                return detail ? { ...m, ...detail } : m;
-              });
-            }
-          });
-        });
-      }, 2000);
-    }
-
-    // 延迟加载剧集详情 - 只在显示剧集模块时加载
-    if (state.homePageConfig.showHotTvShows && homeData.hotTvShows.length > 0) {
-      setTimeout(() => {
-        Promise.all(
-          homeData.hotTvShows.slice(0, 2).map(async (show) => {
-            try {
-              const detailsRes = await getDoubanDetails(show.id);
-              if (detailsRes.code === 200 && detailsRes.data) {
-                return {
-                  id: show.id,
-                  plot_summary: detailsRes.data.plot_summary,
-                  backdrop: detailsRes.data.backdrop,
-                  trailerUrl: detailsRes.data.trailerUrl,
-                };
-              }
-            } catch (error) {
-              console.warn(`获取剧集 ${show.id} 详情失败:`, error);
-            }
-            return null;
-          })
-        ).then((results) => {
-          dispatch({
-            type: 'UPDATE_HOT_TV_SHOWS',
-            payload: (prev) => {
-              const base = prev.length > 0 ? prev : homeData.hotTvShows;
-              return base.map(s => {
-                const detail = results.find(r => r?.id === s.id);
-                return detail ? { ...s, ...detail } : s;
-              });
-            }
-          });
-        });
-      }, 2000);
-    }
-
-    // 延迟加载动漫详情 - 只在显示动漫模块时加载
-    if (state.homePageConfig.showNewAnime && homeData.hotAnime.length > 0) {
-      setTimeout(() => {
-        const anime = homeData.hotAnime[0];
-        getDoubanDetails(anime.id)
-          .then((detailsRes) => {
+    // 先让列表和图片加载，2 秒后再取详情
+    const timer = setTimeout(() => {
+      pending.forEach((id) => requestedDetailIdsRef.current.add(id));
+      Promise.all(
+        pending.map(async (id) => {
+          try {
+            const detailsRes = await getDoubanDetails(id);
             if (detailsRes.code === 200 && detailsRes.data) {
-              dispatch({
-                type: 'UPDATE_HOT_ANIME',
-                payload: (prev) => {
-                  const base = prev.length > 0 ? prev : homeData.hotAnime;
-                  return base.map(a => a.id === anime.id ? { ...a, ...detailsRes.data } : a);
-                }
-              });
+              const { plot_summary, backdrop, trailerUrl } = detailsRes.data;
+              return [id, { plot_summary, backdrop, trailerUrl }] as const;
             }
-          })
-          .catch((error) => {
-            console.warn(`获取动漫 ${anime.id} 详情失败:`, error);
+          } catch (error) {
+            console.warn(`获取豆瓣详情 ${id} 失败:`, error);
+          }
+          return null;
+        })
+      ).then((results) => {
+        const found = results.filter((r): r is NonNullable<typeof r> => r !== null);
+        if (found.length === 0) return;
+        setDoubanDetails((prev) => {
+          const next = { ...prev };
+          found.forEach(([id, detail]) => {
+            next[id] = detail;
           });
-      }, 3000);
-    }
+          return next;
+        });
+      });
+    }, 2000);
 
-    // 延迟加载综艺详情 - 只在显示综艺模块时加载
-    if (state.homePageConfig.showHotVariety && homeData.hotVarietyShows.length > 0) {
-      setTimeout(() => {
-        const show = homeData.hotVarietyShows[0];
-        getDoubanDetails(show.id)
-          .then((detailsRes) => {
-            if (detailsRes.code === 200 && detailsRes.data) {
-              dispatch({
-                type: 'UPDATE_HOT_VARIETY_SHOWS',
-                payload: (prev) => {
-                  const base = prev.length > 0 ? prev : homeData.hotVarietyShows;
-                  return base.map(s => s.id === show.id ? { ...s, ...detailsRes.data } : s);
-                }
-              });
-            }
-          })
-          .catch((error) => {
-            console.warn(`获取综艺 ${show.id} 详情失败:`, error);
-          });
-      }, 3000);
-    }
+    return () => clearTimeout(timer);
+  }, [heroDetailKey]);
+
+  // 即将上映数据只需要在进入首页时获取一次（以前每次首页数据变化都会重新请求）
+  useEffect(() => {
+    if (!state.homePageConfig.showUpcomingReleases) return;
 
     // 🔄 异步加载即将上映数据
     fetch('/api/release-calendar?limit=100')
@@ -797,7 +622,7 @@ function HomeClient({ initialConfig }: {
         console.warn('获取即将上映数据失败:', error);
         dispatch({ type: 'SET_UPCOMING_RELEASES', payload: [] });
       });
-  }, [homeData, state.homePageConfig]);
+  }, [state.homePageConfig.showUpcomingReleases]);
 
   // 🚀 TanStack Query - 使用 useMutation 管理清空收藏操作
   // 特性：乐观更新（立即清空 UI）+ 错误回滚（失败时恢复数据）
@@ -811,20 +636,8 @@ function HomeClient({ initialConfig }: {
     localStorage.setItem('hasSeenAnnouncement', announcement); // 记录已查看弹窗
   };
 
-  // 🔥 Show cinematic loading screen while data is being fetched
-  // This ensures users see the beautiful loading animation instead of skeleton screens
-  // 🔥 Use overlay instead of unmounting to prevent component remount issues
-  const showCinematicLoading = loading;
-
   return (
     <PageLayout>
-      {/* 🔥 Cinematic loading overlay - doesn't unmount content */}
-      {showCinematicLoading && (
-        <div className="fixed inset-0 z-50">
-          <CinematicLoadingFallback />
-        </div>
-      )}
-
       {/* Telegram 新用户欢迎弹窗 */}
       <TelegramWelcomeModal />
 
@@ -1308,6 +1121,11 @@ function HomeClient({ initialConfig }: {
             // 首页视图
             <>
               {/* Hero Banner 轮播 */}
+              {state.homePageConfig.showHeroBanner && heroBannerItemsWithLogos.length === 0 && heroLoading && (
+                <section className='mb-8' aria-hidden='true'>
+                  <div className='w-full h-[50vh] sm:h-[55vh] md:h-[60vh] bg-gray-200 dark:bg-gray-800 animate-pulse' />
+                </section>
+              )}
               {state.homePageConfig.showHeroBanner && heroBannerItemsWithLogos.length > 0 && (
                 <section className='mb-8'>
                   <HeroBanner
@@ -1321,14 +1139,9 @@ function HomeClient({ initialConfig }: {
               )}
 
               {/* 继续观看 */}
-              {/* 继续观看 */}
               {state.homePageConfig.showContinueWatching && <ContinueWatching />}
 
               {/* 即将上映 */}
-              {(() => {
-                console.log('🔍 即将上映 section 渲染检查:', { loading, upcomingReleasesCount: upcomingReleases.length });
-                return null;
-              })()}
               {state.homePageConfig.showUpcomingReleases && upcomingReleases.length > 0 && (
                 <section className='mb-8'>
                   <div className='mb-4 flex items-center justify-between'>
@@ -1440,11 +1253,8 @@ function HomeClient({ initialConfig }: {
                   </Link>
                 </div>
                 <ScrollableRow enableVirtualization={true}>
-                  {loading
-                    ? // 加载状态显示灰色占位数据
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <SkeletonCard key={index} />
-                    ))
+                  {sectionLoading.hotMovies
+                    ? <RowSkeleton />
                     : // 显示真实数据
                     hotMovies.map((movie, index) => (
                       <div
@@ -1471,6 +1281,7 @@ function HomeClient({ initialConfig }: {
 
               {/* 热门剧集 */}
               {state.homePageConfig.showHotTvShows && (
+              <LazySection>
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <SectionTitle title="热门剧集" icon={Tv} iconColor="text-blue-500" />
@@ -1483,11 +1294,8 @@ function HomeClient({ initialConfig }: {
                   </Link>
                 </div>
                 <ScrollableRow enableVirtualization={true}>
-                  {loading
-                    ? // 加载状态显示灰色占位数据
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <SkeletonCard key={index} />
-                    ))
+                  {sectionLoading.hotTvShows
+                    ? <RowSkeleton />
                     : // 显示真实数据
                     hotTvShows.map((show, index) => (
                       <div
@@ -1510,10 +1318,12 @@ function HomeClient({ initialConfig }: {
                     ))}
                 </ScrollableRow>
               </section>
+              </LazySection>
               )}
 
               {/* 每日新番放送 */}
               {state.homePageConfig.showNewAnime && (
+              <LazySection>
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <SectionTitle title="新番放送" icon={Calendar} iconColor="text-purple-500" />
@@ -1526,11 +1336,8 @@ function HomeClient({ initialConfig }: {
                   </Link>
                 </div>
                 <ScrollableRow enableVirtualization={true}>
-                  {loading
-                    ? // 加载状态显示灰色占位数据
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <SkeletonCard key={index} />
-                    ))
+                  {sectionLoading.bangumiCalendar
+                    ? <RowSkeleton />
                     : // 展示当前日期的番剧
                     todayAnimes.map((anime, index) => (
                         <div
@@ -1543,14 +1350,7 @@ function HomeClient({ initialConfig }: {
                             id={anime.id.toString()}
                             source_name='Bangumi'
                             title={anime.name_cn || anime.name}
-                            poster={
-                              anime.images?.large ||
-                              anime.images?.common ||
-                              anime.images?.medium ||
-                              anime.images?.small ||
-                              anime.images?.grid ||
-                              '/placeholder-poster.jpg'
-                            }
+                            poster={getBangumiCoverUrl(anime.images)}
                             douban_id={anime.id}
                             rate={anime.rating?.score?.toFixed(1) || ''}
                             year={anime.air_date?.split('-')?.[0] || ''}
@@ -1560,10 +1360,12 @@ function HomeClient({ initialConfig }: {
                       ))}
                 </ScrollableRow>
               </section>
+              </LazySection>
               )}
 
               {/* 热门综艺 */}
               {state.homePageConfig.showHotVariety && (
+              <LazySection>
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <SectionTitle title="热门综艺" icon={Sparkles} iconColor="text-pink-500" />
@@ -1576,11 +1378,8 @@ function HomeClient({ initialConfig }: {
                   </Link>
                 </div>
                 <ScrollableRow enableVirtualization={true}>
-                  {loading
-                    ? // 加载状态显示灰色占位数据
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <SkeletonCard key={index} />
-                    ))
+                  {sectionLoading.hotVarietyShows
+                    ? <RowSkeleton />
                     : // 显示真实数据
                     hotVarietyShows.map((show, index) => (
                       <div
@@ -1603,10 +1402,12 @@ function HomeClient({ initialConfig }: {
                     ))}
                 </ScrollableRow>
               </section>
+              </LazySection>
               )}
 
               {/* 热门短剧 */}
               {state.homePageConfig.showHotShortDramas && (
+              <LazySection>
               <section className='mb-8'>
                 <div className='mb-4 flex items-center justify-between'>
                   <SectionTitle title="热门短剧" icon={Play} iconColor="text-orange-500" />
@@ -1619,11 +1420,8 @@ function HomeClient({ initialConfig }: {
                   </Link>
                 </div>
                 <ScrollableRow enableVirtualization={true}>
-                  {loading
-                    ? // 加载状态显示灰色占位数据
-                    Array.from({ length: 8 }).map((_, index) => (
-                      <SkeletonCard key={index} />
-                    ))
+                  {sectionLoading.hotShortDramas
+                    ? <RowSkeleton />
                     : // 显示真实数据
                     hotShortDramas.map((drama, index) => (
                       <ShortDramaCard
@@ -1634,6 +1432,7 @@ function HomeClient({ initialConfig }: {
                     ))}
                 </ScrollableRow>
               </section>
+              </LazySection>
               )}
             </>
           )}

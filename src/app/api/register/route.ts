@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateAuthCookie } from '@/lib/auth';
 import { clearConfigCache, getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
-import { useInviteCode, validateInviteCode } from '@/lib/invite-code';
+import { consumeInviteCode, validateInviteCode } from '@/lib/invite-code';
 
 export const runtime = 'nodejs';
 
@@ -100,8 +100,12 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // 检查用户是否已存在
-      const userExists = await db.checkUserExist(username);
+      // 检查用户是否已存在：新旧两种用户记录和配置文件里的用户都要检查，
+      // 否则可以注册一个和 OIDC 用户（只有新版记录）同名的账号，用密码登录进他的账户
+      const userExists =
+        (await db.checkUserExist(username)) ||
+        (await db.checkUserExistV2(username)) ||
+        config.UserConfig.Users.some((u) => u.username === username);
       if (userExists) {
         return NextResponse.json({ error: '该用户名已被注册' }, { status: 400 });
       }
@@ -114,9 +118,11 @@ export async function POST(req: NextRequest) {
         ? config.SiteConfig.DefaultUserTags
         : undefined;
 
-      // 如果有默认用户组，使用 V2 注册；否则使用 V1 注册（保持兼容性）
+      // 登录校验的是 V1 密码，所以无论是否有默认用户组都必须写入 V1 密码；
+      // 有默认用户组时再额外写入 V2 记录保存分组（以前只写 V2，导致注册后无法登录）
       if (defaultTags) {
-        // V2 注册（支持 tags）
+        await db.registerUser(username, password);
+        // V2 记录（支持 tags）
         await db.createUserV2(
           username,
           password,
@@ -134,7 +140,7 @@ export async function POST(req: NextRequest) {
       const requireInviteCode = config.UserConfig?.RequireInviteCode === true;
       if (requireInviteCode && inviteCode) {
         try {
-          await useInviteCode(inviteCode.trim().toUpperCase(), username);
+          await consumeInviteCode(inviteCode.trim().toUpperCase(), username);
         } catch (inviteErr) {
           console.error('标记邀请码使用失败:', inviteErr);
           // 不影响注册流程，只记录错误

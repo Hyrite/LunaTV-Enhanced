@@ -15,6 +15,15 @@ module.exports = (phase) => {
 
     reactStrictMode: false,
 
+    // 生产构建去掉 console.log/debug（代码里有一千多处，播放页每秒都会打印），
+    // 保留 error/warn/info 以便排查问题；构建时设置 KEEP_CONSOLE_LOG=1 可保留全部日志
+    compiler: {
+      removeConsole:
+        process.env.NODE_ENV === 'production' && process.env.KEEP_CONSOLE_LOG !== '1'
+          ? { exclude: ['error', 'warn', 'info'] }
+          : false,
+    },
+
     // Puppeteer/Chromium 相关包不进行 bundle（用于 Vercel serverless）
     // 已移除 Puppeteer 依赖以减少包体积（78MB），如需恢复请取消注释并安装依赖
     // serverExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],

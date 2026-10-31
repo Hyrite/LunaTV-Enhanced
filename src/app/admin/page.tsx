@@ -7145,18 +7145,7 @@ const LiveSourceConfig = ({
     );
   };
 
-  if (!config) {
-    return (
-      <div className='flex justify-center items-center py-8'>
-        <div className='flex items-center gap-3 px-6 py-3 bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50 shadow-md'>
-          <div className='animate-spin rounded-full h-5 w-5 border-2 border-blue-300 border-t-blue-600 dark:border-blue-700 dark:border-t-blue-400'></div>
-          <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>加载配置中...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // 📊 读取 CORS 统计数据
+  // 📊 读取 CORS 统计数据（Hook 必须在下面的提前返回之前调用）
   const [corsStats, setCorsStats] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('live-cors-stats');
@@ -7170,6 +7159,17 @@ const LiveSourceConfig = ({
     }
     return { directCount: 0, proxyCount: 0, totalChecked: 0 };
   });
+
+  if (!config) {
+    return (
+      <div className='flex justify-center items-center py-8'>
+        <div className='flex items-center gap-3 px-6 py-3 bg-linear-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200/50 dark:border-blue-700/50 shadow-md'>
+          <div className='animate-spin rounded-full h-5 w-5 border-2 border-blue-300 border-t-blue-600 dark:border-blue-700 dark:border-t-blue-400'></div>
+          <span className='text-sm font-medium text-gray-700 dark:text-gray-300'>加载配置中...</span>
+        </div>
+      </div>
+    );
+  }
 
   // 清除CORS统计和缓存
   const handleClearCorsCache = () => {

@@ -33,8 +33,20 @@ export class SqliteStorage implements IStorage {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { DatabaseSync } = require('node:sqlite') as { DatabaseSync: new (path: string) => DatabaseSync };
+    // 用 process.getBuiltinModule 加载内置模块：Turbopack 无法打包 require('node:sqlite')
+    // （构建时报 “Cannot find module 'node:sqlite'”），而它不会被打包器分析
+    const getBuiltinModule = (process as unknown as {
+      getBuiltinModule?: (id: string) => unknown;
+    }).getBuiltinModule;
+    const sqliteModule = getBuiltinModule?.('node:sqlite') as
+      | { DatabaseSync: new (path: string) => DatabaseSync }
+      | undefined;
+    if (!sqliteModule) {
+      throw new Error(
+        '[LunaTV] SQLite 存储需要 Node.js 22.13 及以上版本（内置 node:sqlite 模块）',
+      );
+    }
+    const { DatabaseSync } = sqliteModule;
 
     const isBuild = process.env.IS_BUILD_PHASE === 'true';
 
@@ -69,6 +81,8 @@ export class SqliteStorage implements IStorage {
           console.error('[SQLite] 缓存清理出错:', err);
         });
       }, CACHE_CLEANUP_INTERVAL_MS);
+      // 不让这个定时器单独阻止进程退出（测试、脚本场景）
+      this.cleanupTimer.unref?.();
     } catch (err) {
       console.error(`[SQLite] 打开数据库失败:`, err);
       throw err;
@@ -852,6 +866,15 @@ export class SqliteStorage implements IStorage {
         )
         .run(now);
     }
+  }
+
+  // 管理员手动清理某一类缓存（无论是否过期）
+  async clearCacheByPrefix(prefix: string): Promise<number> {
+    if (!prefix) return 0;
+    const result = this.db
+      .prepare('DELETE FROM cache WHERE key LIKE ?')
+      .run(`${prefix}%`);
+    return Number(result.changes ?? 0);
   }
 
   // ==================== 播放统计 ====================

@@ -6,6 +6,7 @@ import { getCacheTime } from '@/lib/config';
 import { fetchDoubanData } from '@/lib/douban';
 import { DoubanResult } from '@/lib/types';
 import { recordRequest } from '@/lib/performance-monitor';
+import { withServerCache } from '@/lib/server-route-cache';
 
 interface DoubanRecommendApiResponse {
   total: number;
@@ -26,7 +27,7 @@ interface DoubanRecommendApiResponse {
 
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const startTime = Date.now();
   const startMemory = process.memoryUsage().heapUsed;
 
@@ -173,3 +174,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(errorResponse, { status: 500 });
   }
 }
+
+// 服务端共享缓存（推荐列表 2 小时）：命中时不再请求豆瓣，浏览器端也不必再自己读写 /api/cache
+export const GET = withServerCache(handleGET, {
+  keyPrefix: 'douban-api-recommends-',
+  ttlSeconds: 2 * 60 * 60,
+});

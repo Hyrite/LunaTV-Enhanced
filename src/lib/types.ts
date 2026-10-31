@@ -201,7 +201,10 @@ export interface IStorage {
   getCache(key: string): Promise<any | null>;
   setCache(key: string, data: any, expireSeconds?: number): Promise<void>;
   deleteCache(key: string): Promise<void>;
+  // 只清理已过期的缓存（Redis 类存储靠 TTL 自动过期，为空操作）
   clearExpiredCache(prefix?: string): Promise<void>;
+  // 清理某一前缀下的全部缓存（管理员“按类型清理”使用），返回删除条数
+  clearCacheByPrefix?(prefix: string): Promise<number>;
 
   // 播放统计相关
   getPlayStats(): Promise<PlayStatsResult>;

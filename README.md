@@ -119,24 +119,42 @@ sudo bash lunatv-ex.sh
 
 记得在云服务商防火墙放行对外端口（默认 TCP 2087）。
 
-### Docker 部署（推荐）
+### Docker 部署
 
-```bash
-# 克隆项目
-git clone https://github.com/Hyrite/LunaTV-Enhanced.git
-cd LunaTV-Enhanced
+新建一个目录，保存下面的 `docker-compose.yml`（LunaTV + Kvrocks，把 `PASSWORD` 改成你自己的站长密码）：
 
-# 复制环境变量配置
-cp .env.example .env
+```yml
+services:
+  lunatv:
+    image: ghcr.io/hyrite/lunatv:latest
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      - USERNAME=admin
+      - PASSWORD=your_secure_password
+      - NEXT_PUBLIC_STORAGE_TYPE=kvrocks
+      - KVROCKS_URL=redis://lunatv-kvrocks:6666
+    depends_on:
+      - lunatv-kvrocks
 
-# 编辑 .env 文件，配置必要的环境变量
-nano .env
+  lunatv-kvrocks:
+    image: apache/kvrocks
+    restart: unless-stopped
+    volumes:
+      - kvrocks-data:/var/lib/kvrocks
 
-# 启动服务
-docker-compose up -d
+volumes:
+  kvrocks-data:
 ```
 
-访问 `http://localhost:3000` 即可使用。
+```bash
+docker compose up -d
+```
+
+访问 `http://localhost:3000` 即可使用。更多存储方式和环境变量见 [部署指南](docs/deployment/DEPLOYMENT.md)。
+
+> 💡 使用 Cloudflare 代理时，可以在 Cloudflare 后台为 `/api/image-proxy*` 添加一条 Cache Rule（Eligible for cache）：海报等图片会由 Cloudflare 缓存并就近返回，减轻服务器流量、加快图片加载。该接口已返回 7 天的 `Cache-Control`，默认情况下 Cloudflare 不会缓存没有扩展名的地址。
 
 ### 本地开发
 

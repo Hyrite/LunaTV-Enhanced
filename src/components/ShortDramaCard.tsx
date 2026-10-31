@@ -111,7 +111,8 @@ function ShortDramaCard({
 
       // 检查统一缓存
       const cached = await getCache(cacheKey);
-      if (cached && typeof cached === 'number') {
+      // 注意 0 也是有效缓存（表示上次没取到集数，1 小时内不再重试）
+      if (typeof cached === 'number') {
         if (cached > 1) {
           setRealEpisodeCount(cached);
           setShowEpisodeCount(true);

@@ -71,17 +71,9 @@ export const VersionPanel: React.FC<VersionPanelProps> = ({
   }, [isOpen]);
 
   // 获取远程变更日志
-  useEffect(() => {
-    if (isOpen) {
-      fetchRemoteChangelog();
-    }
-  }, [isOpen]);
-
-  // 获取远程变更日志
-  const fetchRemoteChangelog = async () => {
+  // timestamp 由调用方（effect）传入，用于避免浏览器和 CDN 缓存
+  const fetchRemoteChangelog = async (timestamp: number) => {
     try {
-      // 添加时间戳参数避免浏览器缓存
-      const timestamp = Date.now();
       const response = await fetch(`${REPO_RAW_URL}/CHANGELOG?_t=${timestamp}`);
       if (response.ok) {
         const content = await response.text();
@@ -175,6 +167,13 @@ export const VersionPanel: React.FC<VersionPanelProps> = ({
 
     return versions;
   };
+
+  // 获取远程变更日志
+  useEffect(() => {
+    if (isOpen) {
+      fetchRemoteChangelog(Date.now());
+    }
+  }, [isOpen]);
 
   // 渲染变更日志条目
   const renderChangelogEntry = (

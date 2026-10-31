@@ -35,6 +35,11 @@ export default [
           argsIgnorePattern: '^_',
         },
       ],
+      // 以下两条是为 React Compiler 准备的规则；本项目没有启用 React Compiler（next.config.js 未开启 reactCompiler），
+      // preserve-manual-memoization 只影响编译器能否接管手写的 useMemo/useCallback，与运行结果无关，直接关闭；
+      // set-state-in-effect 提示可能多一次渲染，保留为警告以便逐步优化，但不阻塞提交和 CI
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/set-state-in-effect': 'warn',
       'simple-import-sort/exports': 'warn',
       'simple-import-sort/imports': [
         'warn',

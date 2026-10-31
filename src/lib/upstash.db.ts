@@ -750,16 +750,22 @@ export class UpstashRedisStorage implements IStorage {
     await withRetry(() => this.client.del(this.cacheKey(key)));
   }
 
-  async clearExpiredCache(prefix?: string): Promise<void> {
-    // Upstash 的 TTL 机制会自动清理过期数据
-    // 仅在有明确前缀时做手动清理，避免全库 KEYS 扫描
-    if (!prefix) return;
+  // Upstash 的 TTL 机制会自动清理过期数据，这里无需做任何事。
+  // 注意：不要在这里按前缀删除——浏览器和定时任务都会调用它，按前缀删除会把仍然有效的缓存一起清空。
+  async clearExpiredCache(_prefix?: string): Promise<void> {
+    return;
+  }
+
+  // 管理员手动清理某一类缓存（无论是否过期）
+  async clearCacheByPrefix(prefix: string): Promise<number> {
+    if (!prefix) return 0;
     const pattern = `cache:${prefix}*`;
     const keys = await withRetry(() => this.client.keys(pattern));
     if (keys.length > 0) {
       await withRetry(() => this.client.del(...keys));
       console.log(`Cleared ${keys.length} cache entries with pattern: ${pattern}`);
     }
+    return keys.length;
   }
 
   // ---------- 数据迁移：旧扁平 key → Hash 结构 ----------

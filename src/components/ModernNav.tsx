@@ -34,7 +34,10 @@ const userEmbyConfigOptions = () => queryOptions({
     const data = await res.json();
     return data.config;
   },
-  staleTime: 5 * 60 * 1000,
+  // 导航栏在每个页面都会渲染：配置很少变化（修改时会主动 invalidate），缓存 30 分钟，切回页面时也不重新请求
+  staleTime: 30 * 60 * 1000,
+  gcTime: 60 * 60 * 1000,
+  refetchOnWindowFocus: false,
   retry: false,
 });
 
@@ -45,7 +48,9 @@ const publicSourcesOptions = () => queryOptions({
     if (!res.ok) return { sources: [] };
     return res.json();
   },
-  staleTime: 5 * 60 * 1000,
+  staleTime: 30 * 60 * 1000,
+  gcTime: 60 * 60 * 1000,
+  refetchOnWindowFocus: false,
   retry: false,
 });
 

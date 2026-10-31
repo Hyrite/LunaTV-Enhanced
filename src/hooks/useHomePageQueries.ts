@@ -46,8 +46,20 @@ export interface HomePageData {
   bangumiCalendar: BangumiCalendarData[];
 }
 
+// 每个首页模块各自的首次加载状态：哪一行的数据先到就先显示哪一行，
+// 不必等最慢的数据源（以前要等 6 个接口全部返回才撤掉全屏加载动画）
+export interface HomeSectionLoading {
+  hotMovies: boolean;
+  hotTvShows: boolean;
+  hotVarietyShows: boolean;
+  hotAnime: boolean;
+  hotShortDramas: boolean;
+  bangumiCalendar: boolean;
+}
+
 export interface HomePageQueriesResult {
   data: HomePageData;
+  sectionLoading: HomeSectionLoading;
   isLoading: boolean;
   isFetching: boolean;
   errors: Error[];
@@ -94,6 +106,11 @@ export interface HomePageQueriesResult {
  * }
  * ```
  */
+// 固定的空数组：combine 每次运行都返回新的 [] 会让依赖它的 useMemo/useEffect 每次都重新执行
+const EMPTY_DOUBAN: DoubanItem[] = [];
+const EMPTY_SHORT_DRAMAS: ShortDramaItem[] = [];
+const EMPTY_BANGUMI: BangumiCalendarData[] = [];
+
 export function useHomePageQueries(config?: HomePageConfig): HomePageQueriesResult {
   // 默认所有模块都启用
   const enabledConfig = useMemo(() => ({
@@ -118,13 +135,22 @@ export function useHomePageQueries(config?: HomePageConfig): HomePageQueriesResu
     // 聚合数据
     const data: HomePageData = {
       hotMovies:
-        moviesResult.data?.code === 200 ? moviesResult.data.list : [],
-      hotTvShows: tvResult.data?.code === 200 ? tvResult.data.list : [],
+        moviesResult.data?.code === 200 ? moviesResult.data.list : EMPTY_DOUBAN,
+      hotTvShows: tvResult.data?.code === 200 ? tvResult.data.list : EMPTY_DOUBAN,
       hotVarietyShows:
-        varietyResult.data?.code === 200 ? varietyResult.data.list : [],
-      hotAnime: animeResult.data?.code === 200 ? animeResult.data.list : [],
-      hotShortDramas: shortDramasResult.data || [],
-      bangumiCalendar: bangumiResult.data || [],
+        varietyResult.data?.code === 200 ? varietyResult.data.list : EMPTY_DOUBAN,
+      hotAnime: animeResult.data?.code === 200 ? animeResult.data.list : EMPTY_DOUBAN,
+      hotShortDramas: shortDramasResult.data || EMPTY_SHORT_DRAMAS,
+      bangumiCalendar: bangumiResult.data || EMPTY_BANGUMI,
+    };
+
+    const sectionLoading: HomeSectionLoading = {
+      hotMovies: moviesResult.isLoading,
+      hotTvShows: tvResult.isLoading,
+      hotVarietyShows: varietyResult.isLoading,
+      hotAnime: animeResult.isLoading,
+      hotShortDramas: shortDramasResult.isLoading,
+      bangumiCalendar: bangumiResult.isLoading,
     };
 
     // 聚合加载状态
@@ -144,6 +170,7 @@ export function useHomePageQueries(config?: HomePageConfig): HomePageQueriesResu
 
     return {
       data,
+      sectionLoading,
       isLoading,
       isFetching,
       errors,

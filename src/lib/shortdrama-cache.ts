@@ -25,7 +25,8 @@ async function getCache(key: string): Promise<any | null> {
   try {
     // 优先从统一存储获取
     const cached = await ClientCache.get(key);
-    if (cached) return cached;
+    // 0 / 空数组也是有效的缓存值（例如“集数未知”），只有 null/undefined 才算未命中
+    if (cached !== null && cached !== undefined) return cached;
 
     // 兜底：从localStorage获取（兼容性）
     if (typeof localStorage !== 'undefined') {
@@ -77,14 +78,8 @@ async function setCache(key: string, data: any, expireSeconds: number): Promise<
 // 清理过期缓存
 async function cleanExpiredCache(): Promise<void> {
   try {
-    // 清理统一存储中的过期缓存
-    // 静默处理错误，避免在没有数据时产生401错误
-    try {
-      await ClientCache.clearExpired('shortdrama-');
-    } catch (e) {
-      // 静默处理：如果缓存为空或请求失败，不影响应用运行
-      // 这是正常情况，不需要警告
-    }
+    // 服务端缓存写入时带 TTL，会自动过期，浏览器不再请求服务端清理
+    // （以前这里会调用 DELETE /api/cache?prefix=…，在 Redis/Kvrocks 上会把整类缓存清空）
 
     // 清理localStorage中的过期缓存
     if (typeof localStorage !== 'undefined') {

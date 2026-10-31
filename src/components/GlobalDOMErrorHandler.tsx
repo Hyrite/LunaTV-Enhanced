@@ -54,6 +54,40 @@ export function GlobalDOMErrorHandler() {
       }
     };
 
+    // 其它未捕获的错误也上报到崩溃日志（/crash-logs 页面和服务端日志可见），
+    // 这样手机上偶发的崩溃（例如 React #185）也能被发现。同一条错误只报一次，每个页面最多报 10 条
+    const reported = new Set<string>();
+    let reportCount = 0;
+    const IGNORED = [
+      /ResizeObserver loop/i,
+      /^Script error\.?$/i, // 跨域脚本（多半是浏览器插件）没有详细信息
+      /AbortError|The user aborted a request|signal is aborted/i,
+      /ChunkLoadError|Loading chunk .* failed/i, // 由 ChunkErrorGuard 处理（刷新页面）
+      /NotAllowedError|play\(\) request was interrupted/i, // 视频自动播放被浏览器拦截
+      /Failed to fetch|Load failed|NetworkError|network error/i, // 网络中断/离开页面导致的请求失败
+    ];
+    const reportUncaught = (type: string, error: any, extra?: Record<string, unknown>) => {
+      const message = String(error?.message || error || 'Unknown error');
+      if (IGNORED.some((re) => re.test(message))) return;
+      const key = `${type}:${message.slice(0, 200)}`;
+      if (reported.has(key) || reportCount >= 10) return;
+      reported.add(key);
+      reportCount += 1;
+      queueMicrotask(() => {
+        sendCrashReport({
+          type,
+          message: message.slice(0, 1000),
+          stack: String(error?.stack || '').split('\n').slice(0, 15).join('\n'),
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+          errorName: error?.name || 'Error',
+          errorSource: 'GlobalDOMErrorHandler',
+          additionalInfo: extra,
+        });
+      });
+    };
+
     const handleError = (event: ErrorEvent) => {
       const error = event.error;
 
@@ -92,6 +126,15 @@ export function GlobalDOMErrorHandler() {
         event.preventDefault();
         return true;
       }
+
+      // 加载失败的图片/脚本等资源也会触发 error 事件，但没有 error 对象，这里只报真正的 JS 错误
+      if (error || event.message) {
+        reportUncaught('PAGE_ERROR', error || event.message, {
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+        });
+      }
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
@@ -128,6 +171,8 @@ export function GlobalDOMErrorHandler() {
         event.preventDefault();
         return true;
       }
+
+      reportUncaught('UNHANDLED_REJECTION', error, { promiseRejection: true });
     };
 
     window.addEventListener('error', handleError);

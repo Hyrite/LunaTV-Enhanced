@@ -222,22 +222,6 @@ function HeroBanner({
     });
   }, [items, currentIndex]);
 
-  if (!items || items.length === 0) {
-    return null;
-  }
-
-  const currentItem = items[currentIndex];
-  const backgroundImage = getHDBackdrop(currentItem.backdrop) || currentItem.poster;
-
-  // 🔍 调试日志
-  console.log('[HeroBanner] 当前项目:', {
-    title: currentItem.title,
-    hasBackdrop: !!currentItem.backdrop,
-    hasTrailer: !!currentItem.trailerUrl,
-    trailerUrl: currentItem.trailerUrl,
-    enableVideo,
-  });
-
   // 🎯 延迟加载：只预加载当前和相邻的 trailer URL
   useEffect(() => {
     // 如果禁用了视频，不需要刷新 trailer
@@ -300,6 +284,15 @@ function HeroBanner({
     const timer = setTimeout(checkAndRefreshVisibleTrailers, 1000);
     return () => clearTimeout(timer);
   }, [items, currentIndex, refreshTrailerUrl, enableVideo, refreshedTrailerUrls]);
+
+  // 提前返回必须放在所有 Hook 之后，否则轮播数据从有变无时 React 会因 Hook 数量变化而崩溃
+  if (!items || items.length === 0) {
+    return null;
+  }
+
+  // 数据刷新后条目可能变少，currentIndex 越界时回到第一项
+  const currentItem = items[currentIndex] ?? items[0];
+  const backgroundImage = getHDBackdrop(currentItem.backdrop) || currentItem.poster;
 
   return (
     <div

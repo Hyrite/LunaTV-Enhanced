@@ -50,6 +50,16 @@ export function GlobalErrorIndicator() {
     };
   }, [currentError]);
 
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      setCurrentError(null);
+      setIsReplacing(false);
+      setIsClosing(false);
+    }, 300);
+  };
+
   // 5秒后自动关闭
   useEffect(() => {
     if (!currentError || isClosing) {
@@ -64,16 +74,6 @@ export function GlobalErrorIndicator() {
       clearTimeout(timer);
     };
   }, [currentError, isClosing]);
-
-  const handleClose = () => {
-    setIsClosing(true);
-    setTimeout(() => {
-      setIsVisible(false);
-      setCurrentError(null);
-      setIsReplacing(false);
-      setIsClosing(false);
-    }, 300);
-  };
 
   if (!isVisible || !currentError) {
     return null;

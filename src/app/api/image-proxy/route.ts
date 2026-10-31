@@ -70,7 +70,9 @@ export async function GET(request: Request) {
       'User-Agent': DEFAULT_USER_AGENT,
       'Accept': 'image/avif,image/webp,image/jxl,image/apng,image/svg+xml,image/*,*/*;q=0.8',
       'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-      'Accept-Encoding': 'gzip, deflate, br',
+      // 图片本身已经是压缩格式，再 gzip 没有意义；而且 fetch 会自动解压，
+      // 导致上游的 Content-Length（压缩后长度）和实际转发的字节数对不上
+      'Accept-Encoding': 'identity',
       'Connection': 'keep-alive',
     };
 
@@ -131,9 +133,12 @@ export async function GET(request: Request) {
     // 防止浏览器 MIME 类型嗅探，强制使用声明的 Content-Type
     headers.set('X-Content-Type-Options', 'nosniff');
 
-    // 传递Content-Length以支持进度显示和更好的缓存（如果上游提供）
+    // 传递Content-Length以支持进度显示和更好的缓存（如果上游提供）。
+    // 上游仍然压缩了响应时，fetch 已经解压了 body，原长度不再准确，不能转发，
+    // 否则浏览器会报 ERR_CONTENT_LENGTH_MISMATCH，图片显示不出来
     const contentLength = imageResponse.headers.get('content-length');
-    if (contentLength) {
+    const contentEncoding = imageResponse.headers.get('content-encoding');
+    if (contentLength && (!contentEncoding || contentEncoding === 'identity')) {
       headers.set('Content-Length', contentLength);
     }
 

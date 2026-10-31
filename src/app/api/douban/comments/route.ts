@@ -6,6 +6,7 @@ import { fetchDoubanWithVerification } from '@/lib/douban-anti-crawler';
 // import { bypassDoubanChallenge } from '@/lib/puppeteer';
 import { getRandomUserAgent } from '@/lib/user-agent';
 import { recordRequest } from '@/lib/performance-monitor';
+import { withServerCache } from '@/lib/server-route-cache';
 
 /**
  * 从配置中获取豆瓣 Cookies
@@ -64,7 +65,7 @@ async function tryFetchWithAntiCrawler(url: string): Promise<{ success: boolean;
 
 export const runtime = 'nodejs';
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const startTime = Date.now();
   const startMemory = process.memoryUsage().heapUsed;
 
@@ -402,3 +403,14 @@ function parseDoubanComments(html: string): DoubanComment[] {
     return [];
   }
 }
+
+// 服务端共享缓存（短评 1 小时）：命中时不再请求豆瓣，浏览器端也不必再自己读写 /api/cache
+export const GET = withServerCache(handleGET, {
+  keyPrefix: 'douban-api-comments-',
+  ttlSeconds: 60 * 60,
+  // 没有短评的结果不缓存（多半是被限流），下次再试
+  isCacheable: (body) => {
+    const b = body as { code?: number; data?: { comments?: unknown[] } } | null;
+    return b?.code === 200 && Array.isArray(b.data?.comments) && b.data.comments.length > 0;
+  },
+});

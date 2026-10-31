@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withServerCache } from '@/lib/server-route-cache';
 
 export const runtime = 'nodejs';
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id')?.trim();
 
@@ -56,3 +57,9 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ code: 500, message: 'Failed' });
 }
+
+// 服务端共享缓存（简要信息 4 小时）：命中时不再请求豆瓣，浏览器端也不必再自己读写 /api/cache
+export const GET = withServerCache(handleGET, {
+  keyPrefix: 'douban-api-quickinfo-',
+  ttlSeconds: 4 * 60 * 60,
+});

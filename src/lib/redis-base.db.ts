@@ -890,15 +890,22 @@ export abstract class BaseRedisStorage implements IStorage {
     await this.withRetry(() => this.client.del(this.cacheKey(key)));
   }
 
-  async clearExpiredCache(prefix?: string): Promise<void> {
-    // 仅在有明确前缀时做手动清理，避免全库 SCAN
-    if (!prefix) return;
+  // 缓存写入时都带了 TTL，过期的 key 由 Redis/Kvrocks 自动删除，这里无需做任何事。
+  // 注意：不要在这里按前缀删除——浏览器和定时任务都会调用它，按前缀删除会把仍然有效的缓存一起清空。
+  async clearExpiredCache(_prefix?: string): Promise<void> {
+    return;
+  }
+
+  // 管理员手动清理某一类缓存（无论是否过期）
+  async clearCacheByPrefix(prefix: string): Promise<number> {
+    if (!prefix) return 0;
     const pattern = `cache:${prefix}*`;
     const keys = await this.scanKeys(pattern);
     if (keys.length > 0) {
       await this.withRetry(() => this.client.del(keys));
       console.log(`Cleared ${keys.length} cache entries with pattern: ${pattern}`);
     }
+    return keys.length;
   }
 
   // ---------- 数据迁移：旧扁平 key → Hash 结构 ----------

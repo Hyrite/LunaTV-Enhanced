@@ -409,15 +409,15 @@ export class DatabaseCacheManager {
     try {
       switch (type) {
         case 'douban':
-          await db.clearExpiredCache('douban-');
+          clearedCount += await db.clearCacheByPrefix('douban-');
           console.log('🗑️ 豆瓣缓存清理完成');
           break;
         case 'bangumi':
-          await db.clearExpiredCache('bangumi-');
+          clearedCount += await db.clearCacheByPrefix('bangumi-');
           console.log('🗑️ Bangumi缓存清理完成');
           break;
         case 'shortdrama':
-          await db.clearExpiredCache('shortdrama-');
+          clearedCount += await db.clearCacheByPrefix('shortdrama-');
           // 清理localStorage中的短剧缓存（兜底）
           if (typeof localStorage !== 'undefined') {
             const keys = Object.keys(localStorage).filter(key =>
@@ -432,7 +432,7 @@ export class DatabaseCacheManager {
           console.log('🗑️ 短剧缓存清理完成');
           break;
         case 'tmdb':
-          await db.clearExpiredCache('tmdb-');
+          clearedCount += await db.clearCacheByPrefix('tmdb-');
           // 清理localStorage中的TMDB缓存（兜底）
           if (typeof localStorage !== 'undefined') {
             const keys = Object.keys(localStorage).filter(key =>
@@ -447,11 +447,11 @@ export class DatabaseCacheManager {
           console.log('🗑️ TMDB缓存清理完成');
           break;
         case 'danmu':
-          await db.clearExpiredCache('danmu-cache');
+          clearedCount += await db.clearCacheByPrefix('danmu-cache');
           console.log('🗑️ 弹幕缓存清理完成');
           break;
         case 'netdisk':
-          await db.clearExpiredCache('netdisk-search');
+          clearedCount += await db.clearCacheByPrefix('netdisk-search');
           // 清理localStorage中的网盘缓存（兜底）
           if (typeof localStorage !== 'undefined') {
             const keys = Object.keys(localStorage).filter(key => 
@@ -466,7 +466,7 @@ export class DatabaseCacheManager {
           console.log('🗑️ 网盘搜索缓存清理完成');
           break;
         case 'youtube':
-          await db.clearExpiredCache('youtube-search');
+          clearedCount += await db.clearCacheByPrefix('youtube-search');
           // 清理localStorage中的YouTube缓存（兜底）
           if (typeof localStorage !== 'undefined') {
             const keys = Object.keys(localStorage).filter(key =>
@@ -481,7 +481,7 @@ export class DatabaseCacheManager {
           console.log('🗑️ YouTube搜索缓存清理完成');
           break;
         case 'bilibili':
-          await db.clearExpiredCache('bilibili-search');
+          clearedCount += await db.clearCacheByPrefix('bilibili-search');
           // 清理localStorage中的Bilibili缓存（兜底）
           if (typeof localStorage !== 'undefined') {
             const keys = Object.keys(localStorage).filter(key =>
@@ -497,8 +497,6 @@ export class DatabaseCacheManager {
           break;
       }
       
-      // 由于clearExpiredCache不返回数量，我们无法精确统计
-      clearedCount = 1; // 标记操作已执行
     } catch (error) {
       console.error(`清理${type}缓存失败:`, error);
     }

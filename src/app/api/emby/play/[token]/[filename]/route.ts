@@ -109,8 +109,10 @@ export async function GET(
     headers.set('Content-Type', contentType);
 
     // 复制重要的响应头
+    // 上游压缩过的响应会被 fetch 自动解压，原 Content-Length 不再准确，此时不转发
     const contentLength = videoResponse.headers.get('content-length');
-    if (contentLength) {
+    const contentEncoding = videoResponse.headers.get('content-encoding');
+    if (contentLength && (!contentEncoding || contentEncoding === 'identity')) {
       headers.set('Content-Length', contentLength);
     }
 

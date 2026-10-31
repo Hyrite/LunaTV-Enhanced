@@ -388,10 +388,9 @@ async function clearSearchCache(): Promise<number> {
   
   try {
     // 直接清理数据库中的search-和cache-前缀缓存
-    await db.clearExpiredCache('search-');
-    await db.clearExpiredCache('cache-');
+    clearedCount += await db.clearCacheByPrefix('search-');
+    clearedCount += await db.clearCacheByPrefix('cache-');
     console.log('🗑️ 搜索缓存清理完成');
-    clearedCount = 1; // 标记操作已执行
   } catch (error) {
     console.error('清理搜索缓存失败:', error);
   }

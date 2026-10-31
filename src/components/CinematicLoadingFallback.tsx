@@ -25,6 +25,18 @@ const loadingMessages = [
   { icon: Sparkles, text: '正在寻找最适合您的推荐...', emoji: '✨' },
 ];
 
+// 星星位置用固定值：渲染时用 Math.random() 会让服务端和浏览器生成的 HTML 不一致（水合报错）
+const STARS = [
+  { left: 12, top: 18, delay: 0.4, duration: 3.6 },
+  { left: 84, top: 12, delay: 1.7, duration: 4.2 },
+  { left: 33, top: 72, delay: 2.5, duration: 3.1 },
+  { left: 67, top: 41, delay: 0.9, duration: 4.7 },
+  { left: 8, top: 88, delay: 2.1, duration: 3.9 },
+  { left: 52, top: 9, delay: 1.2, duration: 4.4 },
+  { left: 91, top: 63, delay: 0.2, duration: 3.3 },
+  { left: 24, top: 46, delay: 2.8, duration: 4.0 },
+];
+
 export function CinematicLoadingFallback() {
   const [messageIndex, setMessageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -83,15 +95,15 @@ export function CinematicLoadingFallback() {
 
       {/* Subtle animated background stars */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(8)].map((_, i) => (
+        {STARS.map((star, i) => (
           <div
             key={i}
             className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${3 + Math.random() * 2}s`,
+              left: `${star.left}%`,
+              top: `${star.top}%`,
+              animationDelay: `${star.delay}s`,
+              animationDuration: `${star.duration}s`,
             }}
           />
         ))}

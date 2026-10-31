@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const nextJest = require('next/jest');
 
 const createJestConfig = nextJest({
@@ -27,4 +26,13 @@ const customJestConfig = {
 };
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-module.exports = createJestConfig(customJestConfig);
+// next/jest 默认不转换 node_modules（只放行 geist 和 Next 自身的几个目录）；
+// nanoid 5 只提供 ES Module，把它加进放行列表，让 Jest 转换它（兼容 pnpm 的 .pnpm 目录结构）
+const ESM_PACKAGES = ['nanoid'];
+module.exports = async () => {
+  const config = await createJestConfig(customJestConfig)();
+  config.transformIgnorePatterns = (config.transformIgnorePatterns || []).map((pattern) =>
+    pattern.split('(geist|').join(`(geist|${ESM_PACKAGES.join('|')}|`),
+  );
+  return config;
+};

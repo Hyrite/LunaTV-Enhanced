@@ -1,0 +1,56 @@
+# main 用于跟踪上游，本仓库的开发与发布都在 my-branch（默认分支）上
+# 文件名与上游的工作流不同，便于在 Actions 中单独禁用同步 main 时带进来的上游工作流
+name: LunaTV CI
+
+on:
+  push:
+    branches: [my-branch]
+  pull_request:
+    branches: [my-branch]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint / Typecheck / Test / Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 版本取自 package.json 的 packageManager 字段，这里不能再指定 version
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      # 与 Docker 镜像（node:22-alpine）保持一致
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 只拦截错误；现有的警告（大量 console 等）不阻塞
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # 与 Dockerfile 一样不指定存储类型，运行时再由环境变量决定
+      - name: Build
+        run: pnpm build
+        env:
+          DOCKER_BUILD: 'true'

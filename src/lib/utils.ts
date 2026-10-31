@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from 'clsx';
 import he from 'he';
-import Hls from 'hls.js';
 import { twMerge } from 'tailwind-merge';
 
 /**
@@ -359,6 +358,9 @@ export async function getVideoResolutionFromM3u8(
     }
     
     // 非iPad设备使用优化后的测速逻辑
+    // hls.js 体积很大（约 650 KB），只在真正测速时才加载。
+    // 以前在文件顶部静态导入，导致所有用到本文件的页面（首页、搜索等）都要下载它
+    const { default: Hls } = await import('hls.js');
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
       video.muted = true;

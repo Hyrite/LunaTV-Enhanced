@@ -41,8 +41,8 @@ export function useRefreshTrailerUrlMutation() {
       const response = await fetch(url);
       const data = await response.json();
 
-      // 如果是404且明确标记为NO_TRAILER，记录并返回特殊标记（带时间戳，24小时后重试）
-      if (response.status === 404 && data.error === 'NO_TRAILER') {
+      // 明确标记为NO_TRAILER（新版返回 200，旧版返回 404），记录并返回特殊标记（带时间戳，24小时后重试）
+      if (data?.error === 'NO_TRAILER') {
         console.warn('[HeroBanner] 该影片没有预告片，记录状态避免重复请求');
         return `NO_TRAILER_${Date.now()}`;
       }
