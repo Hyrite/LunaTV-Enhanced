@@ -56,11 +56,9 @@ export default function NavigationShell() {
       />
 
       {/* 移动端头部 - Logo和用户菜单 */}
-      {/* 添加到主屏幕后（PWA 沉浸式状态栏）竖屏时顶部有安全区：头部第一行是和安全区等高的黑色块
-          （状态栏图标固定是白色，需要深色底），下面才是 44px 的内容行（横屏和 Safari 里安全区为 0，高度为 0）。
-          头部用不透明背景、不用 backdrop-blur：iOS 上半透明+毛玻璃的头部叠在状态栏遮挡条下会发灰发糊 */}
+      {/* 主屏幕应用的状态栏由 iOS 绘制成不透明黑色（见 layout.tsx），页面从状态栏下面开始，
+          所以头部不需要再处理顶部安全区 */}
       <div className='md:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 shadow-sm'>
-        <div className='bg-black' style={{ height: 'env(safe-area-inset-top)' }} />
         <div className='flex items-center justify-between h-11 px-4'>
           {/* Logo */}
           <div className='text-base font-bold bg-linear-to-r from-green-600 via-emerald-600 to-teal-600 dark:from-green-400 dark:via-emerald-400 dark:to-teal-400 bg-clip-text text-transparent'>

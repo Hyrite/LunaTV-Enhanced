@@ -161,9 +161,11 @@ export default async function RootLayout({
         />
         <meta name='color-scheme' content='light dark' />
         <meta name='google' content='notranslate' />
-        {/* iOS PWA 沉浸式状态栏：manifest.json 里的同名字段对 Safari 无效，必须通过 meta 标签设置 */}
+        {/* iOS 添加到主屏幕后的状态栏：manifest.json 里的同名字段对 Safari 无效，必须通过 meta 标签设置。
+            用 black（不透明黑色状态栏，页面从状态栏下面开始）而不是 black-translucent（页面铺到状态栏下面）：
+            较新的 iOS 会在 translucent 状态栏区域叠一层模糊和色调，把我们的黑色条带显示成发灰发糊的一块 */}
         <meta name='apple-mobile-web-app-capable' content='yes' />
-        <meta name='apple-mobile-web-app-status-bar-style' content='black-translucent' />
+        <meta name='apple-mobile-web-app-status-bar-style' content='black' />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
@@ -181,15 +183,6 @@ export default async function RootLayout({
         translate='no'
         className={`${inter.className} min-h-screen bg-white text-gray-900 dark:bg-black dark:text-gray-200`}
       >
-        {/*
-          iOS 沉浸式状态栏（black-translucent）下，状态栏图标固定为白色，
-          不随亮/暗主题切换。用一条固定深色条带盖住状态栏区域，
-          确保任何主题下时间/电量图标都清晰可读。安全区外的设备该高度为 0，不受影响。
-        */}
-        <div
-          className='fixed top-0 left-0 right-0 z-1000 bg-black md:hidden'
-          style={{ height: 'env(safe-area-inset-top)' }}
-        />
         <ThemeProvider
           attribute='class'
           defaultTheme='system'
@@ -209,7 +202,7 @@ export default async function RootLayout({
                     {/* 导航栏在 layout 层，自动持久化 */}
                     <NavigationShell />
                     {/* 主内容区域 - 只有这部分会在路由切换时重新渲染 */}
-                    <main className='w-full min-h-screen pt-[calc(44px+env(safe-area-inset-top))] md:pt-16 pb-16 md:pb-8'>
+                    <main className='w-full min-h-screen pt-11 md:pt-16 pb-16 md:pb-8'>
                       <div className='w-full max-w-[2560px] mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 2xl:px-20'>
                         <DOMErrorBoundary componentName="PageContent">
                           {/* 占位放在页面区域内：以前是 fixed inset-0 z-50 的全屏遮罩，会盖住底部导航，
