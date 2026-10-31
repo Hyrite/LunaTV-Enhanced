@@ -108,8 +108,8 @@ This project is for educational purposes only. Do not use for commercial purpose
 
 ```bash
 # Clone the project
-git clone https://github.com/SzeMeng76/LunaTV.git
-cd LunaTV
+git clone https://github.com/Hyrite/LunaTV-Enhanced.git
+cd LunaTV-Enhanced
 
 # Copy environment variables
 cp .env.example .env
@@ -202,12 +202,13 @@ This project is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/lic
 
 © 2025-2026 LunaTV Enhanced Edition & Contributors
 
-Based on [MoonTV](https://github.com/MoonTechLab/LunaTV).
+This repository is a fork of [SzeMeng76/LunaTV](https://github.com/SzeMeng76/LunaTV) (LunaTV Enhanced Edition) and is maintained independently; that project is based on [MoonTV](https://github.com/MoonTechLab/LunaTV).
 
 ## 🙏 Acknowledgments
 
 ### Original Projects
 
+- [SzeMeng76/LunaTV](https://github.com/SzeMeng76/LunaTV) — Upstream of this repository (LunaTV Enhanced Edition)
 - [MoonTV](https://github.com/MoonTechLab/LunaTV) — Original project
 - [Selene](https://github.com/MoonTechLab/Selene) — Official mobile APP (iOS / Android phones)
 - [Selene-TV](https://github.com/MoonTechLab/Selene-TV) — Official Android TV client, optimized for remote control devices
@@ -246,11 +247,11 @@ Thanks to these projects and their authors for their open-source contributions!
 
 ## 📊 Star History
 
-<a href="https://www.star-history.com/?repos=SzeMeng76%2FLunaTV&type=date&legend=top-left">
+<a href="https://www.star-history.com/#Hyrite/LunaTV-Enhanced&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SzeMeng76/LunaTV&type=date&theme=dark&legend=top-left&sealed_token=iij9XuMQwh5rb8SNAKGkKG5rQoIEeYszjWID7ySfhAdCizmcs0StkAebYFZMZOzsSKDK1sYEu3OfbTZO9KQmhzwxg11xBpI8j_clH-lZWfr14521J0-L7Q" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SzeMeng76/LunaTV&type=date&legend=top-left&sealed_token=iij9XuMQwh5rb8SNAKGkKG5rQoIEeYszjWID7ySfhAdCizmcs0StkAebYFZMZOzsSKDK1sYEu3OfbTZO9KQmhzwxg11xBpI8j_clH-lZWfr14521J0-L7Q" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SzeMeng76/LunaTV&type=date&legend=top-left&sealed_token=iij9XuMQwh5rb8SNAKGkKG5rQoIEeYszjWID7ySfhAdCizmcs0StkAebYFZMZOzsSKDK1sYEu3OfbTZO9KQmhzwxg11xBpI8j_clH-lZWfr14521J0-L7Q" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Hyrite/LunaTV-Enhanced&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Hyrite/LunaTV-Enhanced&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Hyrite/LunaTV-Enhanced&type=Date" />
   </picture>
 </a>
 

@@ -399,7 +399,7 @@ Worker 转发：https://lovedan.net/api.php/provide/vod?ac=list&pg=1
 
 项目地址：
 
-- [LunaTV](https://github.com/SzeMeng76/LunaTV)
+- [LunaTV](https://github.com/Hyrite/LunaTV-Enhanced)
 - [CORSAPI](https://github.com/SzeMeng76/CORSAPI)
 
 ---

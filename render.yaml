@@ -3,7 +3,7 @@ services:
     name: lunatv
     runtime: image
     image:
-      url: ghcr.io/szemeng76/lunatv:latest
+      url: ghcr.io/hyrite/lunatv:latest
     numInstances: 1
     plan: free
     healthCheckPath: /

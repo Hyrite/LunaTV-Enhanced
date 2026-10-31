@@ -2,7 +2,7 @@
 
 'use client';
 
-import { CURRENT_VERSION } from "@/lib/version";
+import { CURRENT_VERSION, REPO_RAW_URL } from '@/lib/version';
 
 // 版本检查结果枚举
 export enum UpdateStatus {
@@ -12,9 +12,7 @@ export enum UpdateStatus {
 }
 
 // 远程版本检查URL配置
-const VERSION_CHECK_URLS = [
-  'https://raw.githubusercontent.com/SzeMeng76/LunaTV/refs/heads/main/VERSION.txt',
-];
+const VERSION_CHECK_URLS = [`${REPO_RAW_URL}/VERSION.txt`];
 
 // ========== 缓存机制 ==========
 
@@ -120,16 +118,18 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
  */
 async function performVersionCheck(): Promise<UpdateStatus> {
   try {
-    // 尝试从主要URL获取版本信息
-    const primaryVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[0]);
-    if (primaryVersion) {
-      const status = compareVersions(primaryVersion);
+    // 依次尝试各个URL，取第一个成功的结果
+    for (const url of VERSION_CHECK_URLS) {
+      const remoteVersion = await fetchVersionFromUrl(url);
+      if (!remoteVersion) continue;
+
+      const status = compareVersions(remoteVersion);
 
       // 保存到缓存
       const cacheEntry: CacheEntry = {
         status,
         timestamp: Date.now(),
-        remoteVersion: primaryVersion,
+        remoteVersion,
       };
       memoryCache = cacheEntry;
       saveCacheToStorage(cacheEntry);
@@ -137,24 +137,7 @@ async function performVersionCheck(): Promise<UpdateStatus> {
       return status;
     }
 
-    // 如果主要URL失败，尝试备用URL
-    const backupVersion = await fetchVersionFromUrl(VERSION_CHECK_URLS[1]);
-    if (backupVersion) {
-      const status = compareVersions(backupVersion);
-
-      // 保存到缓存
-      const cacheEntry: CacheEntry = {
-        status,
-        timestamp: Date.now(),
-        remoteVersion: backupVersion,
-      };
-      memoryCache = cacheEntry;
-      saveCacheToStorage(cacheEntry);
-
-      return status;
-    }
-
-    // 如果两个URL都失败，返回获取失败状态（不缓存失败结果）
+    // 所有URL都失败，返回获取失败状态（不缓存失败结果）
     return UpdateStatus.FETCH_FAILED;
   } catch (error) {
     console.error('版本检查失败:', error);

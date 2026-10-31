@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { readTextLimited } from '@/lib/proxy-security';
+import { REPO_URL } from '@/lib/version';
 
 // oEmbed 响应体大小硬上限，防止异常上游返回超大响应把内存打爆
 const MAX_RESPONSE_BYTES = 1 * 1024 * 1024; // 1MB（oEmbed 正常响应体很小）
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(apiUrl, {
       headers: {
-        'User-Agent': 'LunaTV/1.0 (https://github.com/yourusername/LunaTV)',
+        'User-Agent': `LunaTV/1.0 (${REPO_URL})`,
         'Accept': 'application/json',
       },
       next: {

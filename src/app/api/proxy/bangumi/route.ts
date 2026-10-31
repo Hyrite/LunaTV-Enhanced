@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getCacheTime, getConfig } from '@/lib/config';
 import { readTextLimited } from '@/lib/proxy-security';
+import { REPO_URL } from '@/lib/version';
 
 const CMLIUSSSS_BASE = 'https://img.doubanio.cmliussss.net';
 // 桜色镜像站：第三方全域名镜像 bgm.tv -> bangumi.lol
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(apiUrl, {
       headers: {
-        'User-Agent': 'LunaTV/1.0 (https://github.com/yourusername/LunaTV)',
+        'User-Agent': `LunaTV/1.0 (${REPO_URL})`,
         'Accept': 'application/json',
       },
       next: { revalidate: cacheTime },

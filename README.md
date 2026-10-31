@@ -108,8 +108,8 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/SzeMeng76/LunaTV.git
-cd LunaTV
+git clone https://github.com/Hyrite/LunaTV-Enhanced.git
+cd LunaTV-Enhanced
 
 # 复制环境变量配置
 cp .env.example .env
@@ -202,12 +202,13 @@ pnpm dev
 
 © 2025-2026 LunaTV Enhanced Edition & Contributors
 
-基于 [MoonTV](https://github.com/MoonTechLab/LunaTV) 进行二次开发。
+本仓库 fork 自 [SzeMeng76/LunaTV](https://github.com/SzeMeng76/LunaTV)（LunaTV Enhanced Edition），在其基础上独立维护；该项目基于 [MoonTV](https://github.com/MoonTechLab/LunaTV) 进行二次开发。
 
 ## 🙏 致谢
 
 ### 原始项目
 
+- [SzeMeng76/LunaTV](https://github.com/SzeMeng76/LunaTV) — 本仓库的上游项目（LunaTV Enhanced Edition）
 - [MoonTV](https://github.com/MoonTechLab/LunaTV) — 项目原始版本
 - [Selene](https://github.com/MoonTechLab/Selene) — 官方移动端 APP（iOS / Android 手机）
 - [Selene-TV](https://github.com/MoonTechLab/Selene-TV) — 官方 Android TV 客户端，针对遥控器设备优化
@@ -246,11 +247,11 @@ pnpm dev
 
 ## 📊 Star History
 
-<a href="https://www.star-history.com/?repos=SzeMeng76%2FLunaTV&type=date&legend=top-left">
+<a href="https://www.star-history.com/#Hyrite/LunaTV-Enhanced&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SzeMeng76/LunaTV&type=date&theme=dark&legend=top-left&sealed_token=iij9XuMQwh5rb8SNAKGkKG5rQoIEeYszjWID7ySfhAdCizmcs0StkAebYFZMZOzsSKDK1sYEu3OfbTZO9KQmhzwxg11xBpI8j_clH-lZWfr14521J0-L7Q" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SzeMeng76/LunaTV&type=date&legend=top-left&sealed_token=iij9XuMQwh5rb8SNAKGkKG5rQoIEeYszjWID7ySfhAdCizmcs0StkAebYFZMZOzsSKDK1sYEu3OfbTZO9KQmhzwxg11xBpI8j_clH-lZWfr14521J0-L7Q" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SzeMeng76/LunaTV&type=date&legend=top-left&sealed_token=iij9XuMQwh5rb8SNAKGkKG5rQoIEeYszjWID7ySfhAdCizmcs0StkAebYFZMZOzsSKDK1sYEu3OfbTZO9KQmhzwxg11xBpI8j_clH-lZWfr14521J0-L7Q" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Hyrite/LunaTV-Enhanced&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Hyrite/LunaTV-Enhanced&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Hyrite/LunaTV-Enhanced&type=Date" />
   </picture>
 </a>
 

@@ -618,7 +618,7 @@ GET /api/tvbox/health?url=JAR_URL
 ## 🔗 相关链接
 
 - [安全配置详解](./TVBOX_SECURITY.md)
-- [LunaTV 主项目](https://github.com/SzeMeng76/LunaTV)
+- [LunaTV 主项目](https://github.com/Hyrite/LunaTV-Enhanced)
 - [TVBox 开源版本](https://github.com/o0HalfLife0o/TVBoxOSC)
 
 ## 🙏 致谢
