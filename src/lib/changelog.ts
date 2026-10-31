@@ -11,6 +11,25 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.0.0',
+    date: '2026-10-31',
+    added: [
+      '🖥️ VPS 一键部署与维护脚本 deploy/lunatv-ex.sh（命令 lunatv-ex）：安装 Docker、用 Docker Compose 运行 LunaTV + Kvrocks，宿主机 nginx 提供 HTTPS（默认 2087 端口，可走 Cloudflare 代理），证书使用已有文件；安装前检查证书与端口，输入不合格可反复重新输入；自动放行宿主机防火墙；提供交互式管理菜单与 status / info / update / logs / uninstall 等命令；可与 lunatv 部署装在同一台服务器',
+      '⏳ 路由切换骨架屏：点击导航后立即显示内容骨架屏（播放页为播放器骨架屏），导航栏保持不动',
+    ],
+    changed: [
+      '🏠 独立发布：本仓库（Hyrite/LunaTV-Enhanced）fork 自 SzeMeng76/LunaTV，从 10.0.0 起使用自己的版本号；版本检查、变更日志、「前往仓库」链接、部署文档与 Docker 镜像（ghcr.io/hyrite/lunatv）都改为本仓库',
+      '⚙️ 镜像构建工作流只在 my-branch 上运行，PR 只构建不推送；移除清空工作流运行记录的任务',
+      '📱 导航更跟手：恢复链接预取，导航栏不再用 startTransition 让旧页面一直停留到新页面就绪',
+      '🎬 首页预告片在手机和省流量模式下默认不自动播放',
+      '📦 观影室的 socket.io-client 改为连接时才加载，没启用观影室时页面不再下载',
+    ],
+    fixed: [
+      '🔐 数据导出再导入后普通用户无法登录：登录密码改为原样恢复（不再二次哈希、不再遗漏 V2 用户的登录密码），SQLite 导出补上密码；只有 V1 密码的用户不再从导出、后台用户列表和定时任务中消失',
+      '📱 手机登录后页面变大：触屏设备上输入框字号至少 16px，iOS 聚焦输入框时不再自动放大页面',
+    ],
+  },
+  {
     version: '6.6.5',
     date: '2026-10-01',
     added: [
