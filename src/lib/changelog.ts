@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.8',
+    date: '2026-11-01',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      // 无变更内容
+    ],
+    fixed: [
+      '🎞️ 首页顶部轮播滑动过程中，右上角的计数和圆点会实时跟随当前位置，不再等滑动完全停下才更新（以前连续滑过几张时一直显示 1 / 6）',
+    ],
+  },
+  {
     version: '10.1.7',
     date: '2026-11-01',
     added: [
