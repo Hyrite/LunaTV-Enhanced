@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.5',
+    date: '2026-11-01',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      // 无变更内容
+    ],
+    fixed: [
+      '🔲 添加到主屏幕后手机顶部仍然发灰发糊：和 LunaTV 保持一致，不再设置 apple-mobile-web-app-capable / apple-mobile-web-app-status-bar-style 两个 meta 标签（由 manifest 的 display: standalone 决定为独立应用，状态栏使用 iOS 默认样式，页面从状态栏下面开始）。已添加的主屏幕快捷方式需要删除后重新添加才会生效',
+    ],
+  },
+  {
     version: '10.1.4',
     date: '2026-10-31',
     added: [
