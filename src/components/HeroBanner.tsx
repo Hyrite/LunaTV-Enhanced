@@ -6,7 +6,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useState, useRef, useCallback, memo } from 'react';
 import { useAutoplay } from './hooks/useAutoplay';
-import { useSwipeGesture } from './hooks/useSwipeGesture';
 // 🚀 TanStack Query Queries & Mutations
 import {
   useRefreshedTrailerUrlsQuery,
@@ -46,7 +45,8 @@ function HeroBanner({
 }: HeroBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [videoLoaded, setVideoLoaded] = useState(false);
 
@@ -155,30 +155,56 @@ function HeroBanner({
     return item.trailerUrl;
   };
 
-  // 导航函数
+  // 滑到指定的一张（用原生横向滚动，吸附由 CSS scroll-snap 完成）
+  const goTo = useCallback((index: number, instant = false) => {
+    const track = trackRef.current;
+    if (!track || items.length === 0) return;
+    const target = ((index % items.length) + items.length) % items.length;
+    track.scrollTo({ left: target * track.clientWidth, behavior: instant ? 'auto' : 'smooth' });
+  }, [items.length]);
+
+  // 自动轮播和桌面端按钮：最后一张之后直接回到第一张（瞬间切换，不会从头到尾快速扫过所有幻灯片）
   const handleNext = useCallback(() => {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
-    setVideoLoaded(false); // 重置视频加载状态
-    setCurrentIndex((prev) => (prev + 1) % items.length);
-    setTimeout(() => setIsTransitioning(false), 800); // Netflix风格：更慢的过渡
-  }, [isTransitioning, items.length]);
+    goTo(currentIndex + 1, currentIndex === items.length - 1);
+  }, [goTo, currentIndex, items.length]);
 
   const handlePrev = useCallback(() => {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
-    setVideoLoaded(false); // 重置视频加载状态
-    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-    setTimeout(() => setIsTransitioning(false), 800);
-  }, [isTransitioning, items.length]);
+    goTo(currentIndex - 1, currentIndex === 0);
+  }, [goTo, currentIndex]);
 
   const handleIndicatorClick = (index: number) => {
-    if (isTransitioning || index === currentIndex) return;
-    setIsTransitioning(true);
-    setVideoLoaded(false); // 重置视频加载状态
-    setCurrentIndex(index);
-    setTimeout(() => setIsTransitioning(false), 800);
+    if (index === currentIndex) return;
+    goTo(index);
   };
+
+  // 滚动停下来之后才确定当前是哪一张：拖动和平滑滚动过程中路过的幻灯片不会触发预告片刷新、视频重置
+  const handleTrackScroll = useCallback(() => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+    settleTimerRef.current = setTimeout(() => {
+      const track = trackRef.current;
+      if (!track || track.clientWidth === 0) return;
+      const index = Math.round(track.scrollLeft / track.clientWidth);
+      setCurrentIndex((prev) => {
+        if (prev === index) return prev;
+        setVideoLoaded(false); // 重置视频加载状态
+        return index;
+      });
+    }, 90);
+  }, []);
+
+  useEffect(() => () => {
+    if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
+  }, []);
+
+  // 窗口大小变化（例如手机横竖屏切换）后保持对齐当前这一张
+  useEffect(() => {
+    const onResize = () => {
+      const track = trackRef.current;
+      if (track) track.scrollTo({ left: currentIndex * track.clientWidth, behavior: 'auto' });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [currentIndex]);
 
   const toggleMute = () => {
     if (videoRef.current) {
@@ -194,12 +220,6 @@ function HeroBanner({
     autoPlayInterval,
     itemsLength: items.length,
     onNext: handleNext,
-  });
-
-  // 使用滑动手势 Hook
-  const swipeHandlers = useSwipeGesture({
-    onSwipeLeft: handleNext,
-    onSwipeRight: handlePrev,
   });
 
   // 预加载背景图片（只预加载当前和后一个，优化性能）
@@ -299,26 +319,25 @@ function HeroBanner({
       className="relative w-full h-[50vh] sm:h-[55vh] md:h-[60vh] overflow-hidden group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      {...swipeHandlers}
+      // 手指按着的时候暂停自动轮播，松开后重新计时
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
+      onTouchCancel={() => setIsHovered(false)}
     >
-      {/* 背景图片/视频层 */}
-      <div className="absolute inset-0">
-        {/* 只渲染当前、前一张、后一张（性能优化） */}
-        {items.map((item, index) => {
-          // 计算是否应该渲染此项
-          const prevIndex = (currentIndex - 1 + items.length) % items.length;
-          const nextIndex = (currentIndex + 1) % items.length;
-          const shouldRender = index === currentIndex || index === prevIndex || index === nextIndex;
-
-          if (!shouldRender) return null;
-
-          return (
-            <div
-              key={item.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
-                index === currentIndex ? 'opacity-100' : 'opacity-0'
-              }`}
-            >
+      {/* 横向滑动轨道：和下面各行一样用原生横向滚动 + 吸附，手指拖动时整张幻灯片跟着移动 */}
+      <div
+        ref={trackRef}
+        onScroll={handleTrackScroll}
+        className="absolute inset-0 flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+        style={{ overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch' }}
+      >
+        {items.map((item, index) => (
+          <div
+            key={item.id}
+            className="relative h-full w-full shrink-0 snap-start snap-always overflow-hidden"
+          >
+            {/* 背景图片/视频层 */}
+            <div className="absolute inset-0">
               {/* 背景图片（始终显示，作为视频的占位符） */}
               <Image
                 src={getProxiedImageUrl(getHDBackdrop(item.backdrop) || item.poster)}
@@ -450,27 +469,24 @@ function HeroBanner({
                   <source src={getProxiedVideoUrl(getEffectiveTrailerUrl(item) || '', item.douban_id)} type="video/mp4" />
                 </video>
               )}
-            </div>
-          );
-        })}
 
         {/* Netflix经典渐变遮罩：底部黑→中间透明→顶部黑 */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/80" />
 
         {/* 左侧额外渐变（增强文字可读性） */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
-      </div>
+            </div>
 
       {/* 内容叠加层 - Netflix风格：左下角 */}
       <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-8 md:px-12 lg:px-16 xl:px-20 pb-12 sm:pb-16 md:pb-20 lg:pb-24">
         <div className="space-y-3 sm:space-y-4 md:space-y-5 lg:space-y-6">
           {/* 标题 - Netflix风格：超大字体，有 TMDB logo 就显示图片 */}
-          {currentItem.tmdbLogo ? (
+          {item.tmdbLogo ? (
             <div className="relative inline-block max-w-[70%]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={currentItem.tmdbLogo}
-                alt={currentItem.title}
+                src={item.tmdbLogo}
+                alt={item.title}
                 className="max-h-16 sm:max-h-20 md:max-h-24 lg:max-h-28 w-auto object-contain"
                 style={{
                   filter: 'drop-shadow(0 0 12px rgba(255,255,255,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.9))',
@@ -479,38 +495,38 @@ function HeroBanner({
             </div>
           ) : (
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white drop-shadow-2xl leading-tight break-words">
-              {currentItem.title}
+              {item.title}
             </h1>
           )}
 
           {/* 元数据 */}
           <div className="flex items-center gap-3 sm:gap-4 text-sm sm:text-base md:text-lg flex-wrap">
-            {currentItem.rate && (
+            {item.rate && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-500/90 backdrop-blur-sm rounded">
                 <span className="text-white font-bold">★</span>
-                <span className="text-white font-bold">{currentItem.rate}</span>
+                <span className="text-white font-bold">{item.rate}</span>
               </div>
             )}
-            {currentItem.year && (
+            {item.year && (
               <span className="text-white/90 font-semibold drop-shadow-md">
-                {currentItem.year}
+                {item.year}
               </span>
             )}
-            {currentItem.type && (
+            {item.type && (
               <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded text-white/90 font-medium border border-white/30">
-                {currentItem.type === 'movie' ? '电影' :
-                 currentItem.type === 'tv' ? '剧集' :
-                 currentItem.type === 'variety' ? '综艺' :
-                 currentItem.type === 'shortdrama' ? '短剧' :
-                 currentItem.type === 'anime' ? '动漫' : '剧集'}
+                {item.type === 'movie' ? '电影' :
+                 item.type === 'tv' ? '剧集' :
+                 item.type === 'variety' ? '综艺' :
+                 item.type === 'shortdrama' ? '短剧' :
+                 item.type === 'anime' ? '动漫' : '剧集'}
               </span>
             )}
           </div>
 
           {/* 描述 - 限制3行 */}
-          {currentItem.description && (
+          {item.description && (
             <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/90 line-clamp-3 drop-shadow-lg leading-relaxed max-w-xl">
-              {currentItem.description}
+              {item.description}
             </p>
           )}
 
@@ -518,9 +534,9 @@ function HeroBanner({
           <div className="flex gap-3 sm:gap-4 pt-2">
             <Link
               href={
-                currentItem.type === 'shortdrama'
-                  ? `/play?title=${encodeURIComponent(currentItem.title)}&shortdrama_id=${currentItem.id}`
-                  : `/play?title=${encodeURIComponent(currentItem.title)}${currentItem.year ? `&year=${currentItem.year}` : ''}${currentItem.douban_id ? `&douban_id=${currentItem.douban_id}` : ''}${currentItem.type ? `&stype=${currentItem.type}` : ''}`
+                item.type === 'shortdrama'
+                  ? `/play?title=${encodeURIComponent(item.title)}&shortdrama_id=${item.id}`
+                  : `/play?title=${encodeURIComponent(item.title)}${item.year ? `&year=${item.year}` : ''}${item.douban_id ? `&douban_id=${item.douban_id}` : ''}${item.type ? `&stype=${item.type}` : ''}`
               }
               className="flex items-center gap-2 px-6 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-4 bg-white text-black font-bold rounded hover:bg-white/90 transition-all transform hover:scale-105 active:scale-95 shadow-xl text-base sm:text-lg md:text-xl"
             >
@@ -529,10 +545,10 @@ function HeroBanner({
             </Link>
             <Link
               href={
-                currentItem.type === 'shortdrama'
+                item.type === 'shortdrama'
                   ? '/shortdrama'
                   : `/douban?type=${
-                      currentItem.type === 'variety' ? 'show' : (currentItem.type || 'movie')
+                      item.type === 'variety' ? 'show' : (item.type || 'movie')
                     }`
               }
               className="flex items-center gap-2 px-6 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-4 bg-white/30 backdrop-blur-md text-white font-bold rounded hover:bg-white/40 transition-all transform hover:scale-105 active:scale-95 shadow-xl text-base sm:text-lg md:text-xl border border-white/50"
@@ -542,6 +558,9 @@ function HeroBanner({
             </Link>
           </div>
         </div>
+      </div>
+          </div>
+        ))}
       </div>
 
       {/* 音量控制按钮（仅视频模式） - 底部右下角，避免遮挡简介 */}
