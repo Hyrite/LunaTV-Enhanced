@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.7',
+    date: '2026-11-01',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      '🎞️ 首页顶部大轮播改为可左右滑动：手指拖动时图片、标题、按钮跟着移动，松手自动吸附到最近一张，和下面各行的滑动方式一致。竖向滑动仍然滚动页面；触摸时暂停自动轮播，松手后恢复；滑动停稳后才切换预告片；箭头、圆点和自动轮播仍然可用',
+    ],
+    fixed: [
+      // 无修复内容
+    ],
+  },
+  {
     version: '10.1.6',
     date: '2026-11-01',
     added: [
