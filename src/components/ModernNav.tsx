@@ -11,6 +11,7 @@ import { FastLink } from './FastLink';
 import { ThemeToggle } from './ThemeToggle';
 import { UserMenu } from './UserMenu';
 import { useSite } from './SiteProvider';
+import TopLayerPortal from './TopLayerPortal';
 
 interface NavItem {
   icon: any;
@@ -357,6 +358,7 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
       )}
 
       {/* Mobile Bottom Navigation - Netflix Full-Width Style with Light Mode Support */}
+      <TopLayerPortal>
       <nav
         className='md:hidden fixed left-0 right-0 z-40 bg-white/80 dark:bg-black/95 backdrop-blur-lg border-t border-black/5 dark:border-white/5 shadow-xl shadow-black/5 dark:shadow-2xl dark:shadow-black/40'
         style={{
@@ -403,6 +405,7 @@ export default function ModernNav({ showAIButton = false, onAIButtonClick }: Mod
           </button>
         </div>
       </nav>
+      </TopLayerPortal>
 
       {/* Spacer for fixed navigation */}
       <div className='hidden md:block h-16' />

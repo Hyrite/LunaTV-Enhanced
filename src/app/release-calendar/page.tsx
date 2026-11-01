@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ReleaseCalendarItem, ReleaseCalendarResult } from '@/lib/types';
 import PageLayout from '@/components/PageLayout';
+import TopLayerPortal from '@/components/TopLayerPortal';
 
 export default function ReleaseCalendarPage() {
   const queryClient = useQueryClient();
@@ -1042,13 +1043,15 @@ export default function ReleaseCalendarPage() {
 
         {/* 返回顶部悬浮按钮 */}
         {showBackToTop && (
-          <button
+          <TopLayerPortal>
+            <button
             onClick={scrollToTop}
             className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-6 md:bottom-6 z-50 group bg-blue-600 dark:bg-blue-700 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-all duration-300 hover:scale-110"
             aria-label="返回顶部"
           >
             <ChevronUp className="w-6 h-6 transition-transform group-hover:scale-110" />
           </button>
+          </TopLayerPortal>
         )}
       </div>
       </div>

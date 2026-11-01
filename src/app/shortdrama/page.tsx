@@ -16,6 +16,7 @@ import { ShortDramaCategory } from '@/lib/types';
 import PageLayout from '@/components/PageLayout';
 import ShortDramaCard from '@/components/ShortDramaCard';
 import VirtualGrid from '@/components/VirtualGrid';
+import TopLayerPortal from '@/components/TopLayerPortal';
 
 const PAGE_SIZE = 20;
 
@@ -479,7 +480,8 @@ export default function ShortDramaPage() {
       </div>
 
       {/* 返回顶部悬浮按钮 */}
-      <button
+      <TopLayerPortal>
+        <button
         onClick={scrollToTop}
         className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-6 z-500 w-12 h-12 bg-purple-500/90 hover:bg-purple-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out flex items-center justify-center group ${
           showBackToTop
@@ -490,6 +492,7 @@ export default function ShortDramaPage() {
       >
         <ChevronUp className='w-6 h-6 transition-transform group-hover:scale-110' />
       </button>
+      </TopLayerPortal>
     </PageLayout>
   );
 }

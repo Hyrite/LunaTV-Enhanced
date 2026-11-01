@@ -23,6 +23,7 @@ import DoubanSelector from '@/components/DoubanSelector';
 import PageLayout from '@/components/PageLayout';
 import VideoCard from '@/components/VideoCard';
 import VirtualGrid from '@/components/VirtualGrid';
+import TopLayerPortal from '@/components/TopLayerPortal';
 
 const PAGE_SIZE = 25;
 
@@ -753,7 +754,8 @@ function DoubanPageClient() {
       </div>
 
       {/* 返回顶部悬浮按钮 */}
-      <button
+      <TopLayerPortal>
+        <button
         onClick={scrollToTop}
         className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-6 z-500 w-12 h-12 bg-green-500/90 hover:bg-green-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out flex items-center justify-center group ${showBackToTop
           ? 'opacity-100 translate-y-0 pointer-events-auto'
@@ -763,6 +765,7 @@ function DoubanPageClient() {
       >
         <ChevronUp className='w-6 h-6 transition-transform group-hover:scale-110' />
       </button>
+      </TopLayerPortal>
     </PageLayout>
   );
 }

@@ -67,6 +67,7 @@ function formatLoginDisplay(loginCount: number) {
 }
 
 import { PlayStatsResult } from '@/app/api/admin/play-stats/route';
+import TopLayerPortal from '@/components/TopLayerPortal';
 
 const PlayStatsPage: React.FC = () => {
   const router = useRouter();
@@ -1585,7 +1586,8 @@ const PlayStatsPage: React.FC = () => {
             </>
           )}
         </div>
-        <button
+        <TopLayerPortal>
+          <button
           onClick={scrollToTop}
           className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-6 z-500 w-12 h-12 bg-green-500/90 hover:bg-green-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out flex items-center justify-center group ${showBackToTop
             ? 'opacity-100 translate-y-0 pointer-events-auto'
@@ -1595,6 +1597,7 @@ const PlayStatsPage: React.FC = () => {
         >
           <ChevronUp className='w-6 h-6 transition-transform group-hover:scale-110' />
         </button>
+        </TopLayerPortal>
 
       </PageLayout>
     );
@@ -2184,7 +2187,8 @@ const PlayStatsPage: React.FC = () => {
         </div>
 
         {/* 返回顶部悬浮按钮 */}
-        <button
+        <TopLayerPortal>
+          <button
           onClick={scrollToTop}
           className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-6 z-500 w-12 h-12 bg-green-500/90 hover:bg-green-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out flex items-center justify-center group ${showBackToTop
             ? 'opacity-100 translate-y-0 pointer-events-auto'
@@ -2194,6 +2198,7 @@ const PlayStatsPage: React.FC = () => {
         >
           <ChevronUp className='w-6 h-6 transition-transform group-hover:scale-110' />
         </button>
+        </TopLayerPortal>
 
       </PageLayout>
     );
@@ -2215,7 +2220,8 @@ const PlayStatsPage: React.FC = () => {
       </div>
 
       {/* 返回顶部悬浮按钮 */}
-      <button
+      <TopLayerPortal>
+        <button
         onClick={scrollToTop}
         className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-6 z-500 w-12 h-12 bg-green-500/90 hover:bg-green-500 text-white rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ease-in-out flex items-center justify-center group ${showBackToTop
           ? 'opacity-100 translate-y-0 pointer-events-auto'
@@ -2225,6 +2231,7 @@ const PlayStatsPage: React.FC = () => {
       >
         <ChevronUp className='w-6 h-6 transition-transform group-hover:scale-110' />
       </button>
+      </TopLayerPortal>
     </PageLayout>
   );
 };

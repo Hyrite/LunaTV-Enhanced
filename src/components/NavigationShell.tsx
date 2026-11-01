@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { isAIRecommendFeatureDisabled } from '@/lib/ai-recommend.client';
 
 import AIRecommendModal from './AIRecommendModal';
+import TopLayerPortal from './TopLayerPortal';
 import ModernNav from './ModernNav';
 import { useSite } from './SiteProvider';
 import { ThemeToggle } from './ThemeToggle';
@@ -58,6 +59,7 @@ export default function NavigationShell() {
       {/* 移动端头部 - Logo和用户菜单 */}
       {/* 主屏幕应用的状态栏由 iOS 绘制成不透明黑色（见 layout.tsx），页面从状态栏下面开始，
           所以头部不需要再处理顶部安全区 */}
+      <TopLayerPortal>
       <div className='md:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-gray-900 shadow-sm'>
         <div className='flex items-center justify-between h-11 px-4'>
           {/* Logo */}
@@ -81,6 +83,7 @@ export default function NavigationShell() {
           </div>
         </div>
       </div>
+      </TopLayerPortal>
 
       {/* AI 推荐弹窗 */}
       <AIRecommendModal

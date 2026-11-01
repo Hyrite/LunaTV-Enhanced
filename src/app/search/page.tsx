@@ -150,6 +150,7 @@ import DirectYouTubePlayer from '@/components/DirectYouTubePlayer';
 import TMDBFilterPanel, { TMDBFilterState } from '@/components/TMDBFilterPanel';
 import AcgSearch from '@/components/AcgSearch';
 import stcasc from 'switch-chinese';
+import TopLayerPortal from '@/components/TopLayerPortal';
 
 const chineseConverter = stcasc();
 
@@ -2655,7 +2656,8 @@ function SearchPageClient() {
       )}
 
       {/* 返回顶部悬浮按钮 */}
-      <button
+      <TopLayerPortal>
+        <button
         onClick={scrollToTop}
         className={`fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-6 md:bottom-6 z-50 w-12 h-12 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center ${showBackToTop
           ? 'opacity-100 translate-y-0'
@@ -2665,6 +2667,7 @@ function SearchPageClient() {
       >
         <ChevronUp className='w-6 h-6' />
       </button>
+      </TopLayerPortal>
     </PageLayout>
   );
 }
