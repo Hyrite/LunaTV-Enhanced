@@ -11,6 +11,19 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: '10.1.6',
+    date: '2026-11-01',
+    added: [
+      // 无新增内容
+    ],
+    changed: [
+      // 无变更内容
+    ],
+    fixed: [
+      '👆 iPhone 上页面惯性滚动时点按顶部栏、底部导航按钮，第一下只能停住滚动、要再点一下才有反应：手机顶部栏（AI、主题、用户按钮）、底部导航（含“更多”）和各页面的返回顶部按钮现在放在 `<html>` 下，不在作为滚动容器的 `<body>` 里，惯性滚动中点按立即响应，也不会打断滚动。页面内容里的按钮（卡片、标签页等）仍在滚动内容里，惯性滚动中点按会先停住滚动，这是 iOS 的正常行为',
+    ],
+  },
+  {
     version: '10.1.5',
     date: '2026-11-01',
     added: [
