@@ -44,6 +44,8 @@ function HeroBanner({
   enableVideo = false,
 }: HeroBannerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  // 滑动过程中实时更新的位置：只用于右上角计数和圆点；预告片、自动轮播仍用停稳后的 currentIndex
+  const [displayIndex, setDisplayIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,6 +181,10 @@ function HeroBanner({
 
   // 滚动停下来之后才确定当前是哪一张：拖动和平滑滚动过程中路过的幻灯片不会触发预告片刷新、视频重置
   const handleTrackScroll = useCallback(() => {
+    const live = trackRef.current;
+    if (live && live.clientWidth > 0) {
+      setDisplayIndex(Math.round(live.scrollLeft / live.clientWidth));
+    }
     if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
     settleTimerRef.current = setTimeout(() => {
       const track = trackRef.current;
@@ -189,6 +195,7 @@ function HeroBanner({
         setVideoLoaded(false); // 重置视频加载状态
         return index;
       });
+      setDisplayIndex(index);
     }, 90);
   }, []);
 
@@ -606,7 +613,7 @@ function HeroBanner({
               key={index}
               onClick={() => handleIndicatorClick(index)}
               className={`h-1 rounded-full transition-all duration-300 ${
-                index === currentIndex
+                index === displayIndex
                   ? 'w-8 sm:w-10 bg-white shadow-lg'
                   : 'w-2 bg-white/50 hover:bg-white/75'
               }`}
@@ -619,7 +626,7 @@ function HeroBanner({
       {/* 年龄分级标识（可选） */}
       <div className="absolute top-4 sm:top-6 md:top-8 right-4 sm:right-8 md:right-12">
         <div className="px-2 py-1 bg-black/60 backdrop-blur-sm border-2 border-white/70 rounded text-white text-xs sm:text-sm font-bold">
-          {currentIndex + 1} / {items.length}
+          {Math.min(displayIndex, items.length - 1) + 1} / {items.length}
         </div>
       </div>
     </div>
